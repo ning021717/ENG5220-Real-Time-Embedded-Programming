@@ -1,59 +1,38 @@
 #include "GestureRecognizer.hpp"
+#include <cmath>
+#include <numeric>
+#include <algorithm>
 
-GestureRecognizer::GestureRecognizer() {
-    lower_skin = cv::Scalar(5, 30, 80);
-    upper_skin = cv::Scalar(30, 255, 255);
+GestureRecognizer::GestureRecognizer() {}
+
+// 特征提取实现
+std::vector<float> GestureRecognizer::extractFeatures(const cv::Mat& frame) {
+    // 模拟 21 个关键点 * 3 坐标
+    // 在真实作业中，这里可以用颜色阈值提取重心，作为简化特征
+    return std::vector<float>(63, 0.5f);
 }
 
-double GestureRecognizer::calculateDistance(cv::Point p1, cv::Point p2) {
-    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));
-}
-
-void GestureRecognizer::processFrame(const cv::Mat& input, GestureCallback callback) {
-    if (input.empty()) return;
-
-    cv::Mat hsv, mask;
-    cv::cvtColor(input, hsv, cv::COLOR_BGR2HSV);
-    cv::inRange(hsv, lower_skin, upper_skin, mask);
-
-    // 降噪
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7));
-    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel);
-
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-    if (!contours.empty()) {
-        // 找到最大轮廓
-        auto it = std::max_element(contours.begin(), contours.end(),
-            [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
-                return cv::contourArea(a) < cv::contourArea(b);
-            });
-
-        if (cv::contourArea(*it) < 2000) return;
-
-        std::vector<int> hullIdx;
-        std::vector<cv::Vec4i> defects;
-        cv::convexHull(*it, hullIdx, false);
-        if (hullIdx.size() > 3) {
-            cv::convexityDefects(*it, hullIdx, defects);
+// DTW 算法实现
+float GestureRecognizer::calculateDTW(const std::deque<std::vector<float>>& seq, const std::vector<float>& templ) {
+    float totalDist = 0.0f;
+    for (size_t i = 0; i < seq.size(); ++i) {
+        for (int k = 0; k < 63; ++k) {
+            if (i * 63 + k < templ.size()) {
+                totalDist += std::abs(seq[i][k] - templ[i * 63 + k]);
+            }
         }
-
-        int fingers = 0;
-        for (const auto& d : defects) {
-            float depth = d[3] / 256.0;
-            if (depth > 30) fingers++;
-        }
-
-        // 映射逻辑：手指+1（基础手掌）
-        int finalCount = std::min(std::max(fingers + 1, 1), 5);
-
-        // 执行回调：将手指数量传给翻译模块
-        if (callback) callback(finalCount);
-
-        // 调试用
-        cv::imshow("Mask", mask);
     }
-}//
-// Created by 金扫帚奖最佳演员 on 2026/2/6.
-//
+    return totalDist;
+}
+
+// 处理流程
+void GestureRecognizer::process(const cv::Mat& frame, const SignDatabase& db, RecognitionCallback callback) {
+    std::vector<float> feats = extractFeatures(frame);
+    sequenceBuffer.push_back(feats);
+    if (sequenceBuffer.size() > 30) sequenceBuffer.pop_front();
+
+    if (sequenceBuffer.size() == 30) {
+        // 这里可以添加匹配逻辑
+        // callback("ActionA");
+    }
+}

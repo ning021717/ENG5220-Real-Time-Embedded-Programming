@@ -1,35 +1,47 @@
 #include "CameraManager.hpp"
 #include "GestureRecognizer.hpp"
+#include "SignDatabase.hpp"
 #include "Translator.hpp"
+#include <iostream>
 
 int main() {
+    // 1. 初始化并加载数据库
+    SignDatabase db;
+    // ⚠️ 注意：这里使用了你截图中的路径，Windows下路径要用双斜杠
+    std::string dbPath = "E:\\gesture_bin_files";
+
+    std::cout << "正在加载手语库..." << std::endl;
+    if (!db.loadFromFolder(dbPath)) {
+        std::cerr << "无法加载手语库！请检查路径。" << std::endl;
+        return -1;
+    }
+
+    // 2. 初始化模块
     CameraManager camera(0);
     GestureRecognizer recognizer;
     Translator translator;
 
-    if (!camera.init()) return -1;
+    if (!camera.init()) {
+        std::cerr << "摄像头启动失败" << std::endl;
+        return -1;
+    }
 
-    // ROI 区域定义
-    cv::Rect handBox(100, 100, 300, 300);
+    // 3. 启动采集与识别循环
+    std::cout << "系统启动！按 ESC 退出。" << std::endl;
 
-    // 注册 Callback 链路
     camera.startCapture([&](const cv::Mat& frame) {
-        cv::Mat roi = frame(handBox).clone();
-
-        // 识别模块处理
-        recognizer.process(roi, [&](std::string result) {
-            // 翻译模块输出
+        // 将 frame 和 db 传给识别器
+        recognizer.process(frame, db, [&](const std::string& result) {
+            // 识别成功，调用翻译模块
             translator.translate(result);
         });
-
-        // 渲染界面
-        cv::rectangle(frame, handBox, cv::Scalar(0, 255, 0), 2);
-        cv::imshow("Sign Language System", frame);
     });
 
-    while (cv::waitKey(1) != 27) {
-        // 事件循环，保持程序响应
+    // 4. 等待退出 (实时性修正版)
+    while (true) {
+        if (cv::waitKey(10) == 27) break;
     }
+
     camera.stop();
     return 0;
 }

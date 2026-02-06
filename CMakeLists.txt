@@ -15,7 +15,6 @@ include_directories(googletest/googletest/include googletest/googlemock/include)
 add_executable(sign_language_app
         main.cpp
         CameraManager.cpp
-
         GestureRecognizer.cpp
 
 )

@@ -1,0 +1,22 @@
+# 忽略编译生成的临时文件夹
+cmake-build-debug/
+build/
+bin/
+lib/
+
+# 忽略 CLion 的配置文件夹
+.idea/
+
+# 忽略所有编译产生的中间文件
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# 忽略 Python 缓存（如果你用了 Python）
+__pycache__/
+*.pyc
