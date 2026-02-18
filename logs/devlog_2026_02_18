@@ -1,0 +1,143 @@
+# Development Log | 2026-02-18
+Project: Sign Language Translator Glasses — Embedded Real-Time CV System
+
+---
+
+## Summary
+Today marks a major milestone in the project: a fully functional closed-loop computer vision system has been successfully implemented and validated on Raspberry Pi.
+
+The system now supports real-time gesture recognition combined with automated speech feedback, demonstrating a complete perception → inference → interaction pipeline.
+
+Current Status:
+End-to-end system operational and stable.
+
+---
+
+## Completed System Architecture
+
+The system consists of four integrated modules:
+
+---
+
+### 1. Visual Perception Layer
+The Raspberry Pi Camera Module V2 (IMX219) is used to capture real-time image frames. OpenCV handles frame acquisition, preprocessing, and pipeline control.
+
+Key achievements:
+- Stable real-time image acquisition confirmed
+- Frame stream verified through runtime monitoring
+- Camera driver stack validated and stabilized
+- Continuous frame pipeline achieved without blocking
+
+Engineering decision:
+CSI camera with libcamera backend was selected over USB camera due to lower latency, reduced CPU overhead, and higher driver stability.
+
+---
+
+### 2. Core Recognition Algorithm
+A lightweight real-time recognition pipeline was implemented using classical computer vision methods.
+
+Processing pipeline:
+Frame → HSV conversion → Skin detection → ROI extraction → Feature vector → KNN classification
+
+Design rationale:
+HSV color space improves robustness against lighting variation.
+KNN classifier chosen because it provides:
+- fast inference
+- low computational cost
+- minimal training requirement
+- suitability for embedded deployment
+
+---
+
+### 3. Dataset Engineering Module
+A dedicated dataset collection tool was developed to generate custom gesture training data.
+
+Dataset characteristics:
+- Gesture classes: A, B, C
+- Controlled capture environment
+- Consistent resolution and preprocessing
+- Structured binary storage format
+
+Engineering advantages:
+- Perfect alignment between training and runtime features
+- Eliminates domain mismatch
+- Faster loading compared to image datasets
+
+---
+
+### 4. Interactive Output Layer
+A real-time speech feedback module was integrated using a Text-to-Speech engine.
+
+Output pipeline:
+Predicted gesture → text label → TTS engine → spoken output
+
+Validation results:
+Speech output successfully triggered after recognition.
+Audio playback latency within acceptable real-time interaction limits.
+System demonstrates closed-loop human–machine interaction.
+
+---
+
+## System Validation Results
+
+Camera acquisition: Stable  
+Frame pipeline: Real-time  
+Hand segmentation: Accurate  
+Classifier: Functional  
+Speech output: Working  
+
+All subsystems verified and integrated successfully.
+
+---
+
+## Real-Time System Design Evaluation
+
+The implemented architecture satisfies embedded real-time system requirements:
+
+- Multi-stage pipeline avoids blocking operations
+- Lightweight classifier ensures fast inference
+- ROI processing reduces computational load
+- Deterministic processing latency observed
+- Threaded processing model used instead of polling
+
+---
+
+## Engineering Insights
+
+Key technical lessons from today's development:
+
+- Dataset alignment is critical for recognition accuracy
+- Lightweight algorithms outperform heavy models on embedded hardware
+- Real-time systems require strong observability instrumentation
+- Pipeline design is often more important than model complexity
+
+---
+
+## Next Development Steps
+
+Planned roadmap:
+
+1. Expand dataset to full alphabet set
+2. Add dynamic gesture recognition
+3. Implement temporal smoothing
+4. Measure latency and FPS precisely
+5. Integrate wearable display module
+
+---
+
+## Artifacts
+
+Dataset directory:
+/home/stlproject/gesture_dataset/
+
+Log file:
+/home/stlproject/recognition_log.txt
+
+---
+
+## Conclusion
+The system has successfully transitioned from component-level testing to a fully integrated embedded prototype.
+
+This milestone demonstrates a complete real-time computer vision system capable of perception, inference, and interactive output on resource-constrained hardware.
+
+The project is now ready for optimization, scaling, and user testing phases.
