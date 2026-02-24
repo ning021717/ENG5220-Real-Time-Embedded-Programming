@@ -1,26 +1,43 @@
-## 🚀 Project Status
+🚀 Project Status (Updated: 2026-02-24)
+✅ Milestone 1 — 2026-02-11 (Hardware + Real-time Pipeline Stabilization)
+Camera Pipeline: Functional (Raspberry Pi Camera Module v2 / IMX219, libcamera validated).
 
-### ✅ Milestone 1 — 2026-02-11 (Hardware + Real-time Pipeline Stabilization)
-- **Camera Pipeline:** Functional (Raspberry Pi Camera Module v2 / IMX219, libcamera validated)
-- **Real-time Capture:** Threaded acquisition loop implemented (non-blocking capture)
-- **Gesture Recognition:** Integrated into runtime loop (feature pipeline not yet validated against live input)
-- **Output:** Console printing + file logging scaffolded (pending verified letter outputs)
+Real-time Capture: Threaded acquisition loop implemented (non-blocking capture).
 
-### ✅ Milestone 2 — 2026-02-18 (Closed-loop CV System Completed)
-A complete end-to-end embedded CV pipeline is now operational:
+Gesture Recognition: Integrated into runtime loop.
 
-- 👁️ **Visual Perception:** Camera V2 (IMX219) frame capture + OpenCV preprocessing
-- 🧠 **Core Algorithm:** HSV skin segmentation + KNN classification
-- 💾 **Data Engineering:** Custom data collection tool + dataset for gestures (A, B, C)
-- 🗣️ **Interactive Output:** TTS (Text-to-Speech) integrated for real-time voice feedback
+Output: Console printing + file logging scaffolded.
 
-**Current Capability**
-- Real-time recognition of **A / B / C** with spoken output
-- Stable continuous frame acquisition on Raspberry Pi
-- Modular pipeline ready for dataset expansion (full alphabet) and latency benchmarking
+✅ Milestone 2 — 2026-02-18 (Closed-loop CV System Completed)
+👁️ Visual Perception: Camera V2 frame capture + OpenCV preprocessing.
 
-**Next Steps**
-- Expand dataset to full alphabet (A–Z)
-- Add temporal smoothing / dynamic gesture support
-- Measure and report latency (hand gesture → label → speech)
-- Improve robustness under varying lighting conditions
+🧠 Core Algorithm: HSV skin segmentation + KNN classification.
+
+💾 Data Engineering: Custom data collection tool + initial dataset (A, B, C).
+
+🗣️ Interactive Output: TTS (Text-to-Speech) integrated for real-time voice feedback.
+
+✅ Milestone 3 — 2026-02-24 (Full Dataset Expansion & Repository Recovery)
+📚 Dataset Completion: Successfully expanded from 3 classes to the full alphabet (D–Z).
+
+🛡️ Version Control Resilience: Recovered project core following a local environment reset; synchronized local workspace with the remote GitHub repository.
+
+🔐 Secure Workflow: Implemented Personal Access Token (PAT) authentication for secure remote synchronization.
+
+📂 Organized Storage: Standardized directory structure (/dataset/A-Z/) for automated model training.
+
+📊 Current Capability
+Full Alphabet Ready: System-ready for training across all 26 gesture classes.
+
+Data Persistence: Remote backup of all capture scripts and datasets on GitHub.
+
+Stable Infrastructure: Verified end-to-end compatibility between the capture tool and the embedded filesystem.
+
+⏭️ Next Steps
+Global Model Training: Generate the final knn_model.xml using the complete A–Z dataset.
+
+Inference Benchmarking: Execute real-time prediction (predict.cpp) and measure FPS.
+
+Temporal Smoothing: Implement a confidence-based filter to prevent "flickering" between predicted labels.
+
+Hardware Integration: Begin testing with the wearable display module for visual feedback.
