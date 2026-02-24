@@ -1,4 +1,0 @@
-/home/stlproject/test/CMakeFiles/SignLanguage.dir
-/home/stlproject/test/CMakeFiles/TrainModel.dir
-/home/stlproject/test/CMakeFiles/edit_cache.dir
-/home/stlproject/test/CMakeFiles/rebuild_cache.dir
