@@ -7,7 +7,7 @@ using namespace cv;
 using namespace std;
 
 int main() {
-    string label = "A"; 
+    string label = "Z"; 
     string folder = "dataset/" + label;
     system(("mkdir -p " + folder).c_str());
 
