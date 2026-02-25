@@ -1,85 +1,75 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/ml.hpp> // 引入机器学习模块
+#include <opencv2/ml.hpp>
 #include <iostream>
 #include <vector>
-#include <string>
 
+using namespace std;
 using namespace cv;
 using namespace cv::ml;
-using namespace std;
-
-// 图片将被压缩到这个尺寸进行训练（太大了算得慢，太小了看不清）
-const int IMG_SIZE = 50; 
-
-// 读取文件夹内的所有图片路径
-void load_images(string directory, int label, Mat& trainData, Mat& trainLabels) {
-    vector<String> filenames;
-    // 使用 OpenCV 自带的 glob 函数读取文件名
-    glob(directory + "/*.jpg", filenames); 
-
-    if(filenames.empty()) {
-        cout << "警告: 文件夹 " << directory << " 是空的！" << endl;
-        return;
-    }
-
-    cout << "正在处理 " << directory << " (" << filenames.size() << " 张图片)..." << endl;
-
-    for (size_t i = 0; i < filenames.size(); ++i) {
-        Mat img = imread(filenames[i], IMREAD_GRAYSCALE);
-        
-        if (img.empty()) continue;
-
-        // 1. 调整大小 (Resize) 到固定尺寸 (50x50)
-        resize(img, img, Size(IMG_SIZE, IMG_SIZE));
-
-        // 2. 扁平化 (Flatten): 把二维图像变成一维数组 (1行, 2500列)
-        img = img.reshape(1, 1); 
-        
-        // 3. 转换数据类型为浮点数 (KNN 需要 float)
-        img.convertTo(img, CV_32F);
-
-        // 4. 添加到训练集
-        trainData.push_back(img);
-        trainLabels.push_back(label);
-    }
-}
 
 int main() {
-    Mat trainData;
-    Mat trainLabels;
+    // 1. 设置数据集路径和识别的字母范围
+    string path = "dataset/";
+    vector<Mat> trainData;
+    vector<int> trainLabels;
 
-    cout << "开始读取数据..." << endl;
+    // HOG 特征提取器 (参数必须与预测程序完全一致)
+    HOGDescriptor hog(Size(64, 64), Size(16, 16), Size(8, 8), Size(8, 8), 9);
 
-    // 0 代表 A, 1 代表 B, 2 代表 C
-    // 请确保你的文件夹路径正确
-    load_images("dataset/A", 0, trainData, trainLabels);
-    load_images("dataset/B", 1, trainData, trainLabels);
-    load_images("dataset/C", 2, trainData, trainLabels);
+    cout << "📂 开始读取数据集..." << endl;
+
+    // 2. 遍历 A-Z 文件夹
+    for (int i = 0; i < 26; i++) {
+        char folderName = 'A' + i;
+        string folderPath = path + folderName + "/";
+        
+        vector<String> filenames;
+        glob(folderPath + "*.jpg", filenames); // 读取文件夹下所有 jpg 格式图片
+
+        if (filenames.empty()) {
+            cout << "⚠️ 警告: 文件夹 " << folderName << " 为空，跳过。" << endl;
+            continue;
+        }
+
+        cout << "正在处理字母 " << folderName << " (共 " << filenames.size() << " 张图片)" << endl;
+
+        for (const auto& file : filenames) {
+            Mat img = imread(file, IMREAD_GRAYSCALE);
+            if (img.empty()) continue;
+
+            // 统一缩放到 64x64
+            resize(img, img, Size(64, 64));
+
+            // 提取 HOG 特征
+            vector<float> descriptors;
+            hog.compute(img, descriptors);
+
+            trainData.push_back(Mat(descriptors).t());
+            trainLabels.push_back(i); // 标签：A=0, B=1...
+        }
+    }
 
     if (trainData.empty()) {
-        cerr << "错误: 没有加载到任何数据！请检查 dataset 文件夹。" << endl;
+        cout << "❌ 错误：没有提取到任何训练数据！请检查 dataset 文件夹。" << endl;
         return -1;
     }
 
-    cout << "数据加载完毕。正在训练 KNN 模型..." << endl;
+    // 3. 将数据转换为 OpenCV 机器学习需要的格式
+    Mat trainMat;
+    vconcat(trainData, trainMat); // 合并所有特征行
+    trainMat.convertTo(trainMat, CV_32F);
+    Mat labelMat(trainLabels);
 
-    // 创建 KNN 模型
+    // 4. 创建并训练 KNN 模型
+    cout << "🧠 正在训练 KNN 模型，请稍候..." << endl;
     Ptr<KNearest> knn = KNearest::create();
-    
-    // 设置 K 值（看最近的 5 个邻居）
-    knn->setDefaultK(5);
-    
-    // 这是一个分类问题，不是回归问题
+    knn->setDefaultK(3); // 设置 K 值为 3
     knn->setIsClassifier(true);
+    knn->train(trainMat, ROW_SAMPLE, labelMat);
 
-    // 开始训练 (其实 KNN 的训练就是把数据存起来)
-    knn->train(trainData, ROW_SAMPLE, trainLabels);
-
-    cout << "训练完成！" << endl;
-
-    // 保存模型到文件
+    // 5. 保存模型
     knn->save("knn_model.xml");
-    cout << "模型已保存为 'knn_model.xml'" << endl;
+    cout << "✅ 训练完成！模型已保存为: knn_model.xml" << endl;
 
     return 0;
 }
