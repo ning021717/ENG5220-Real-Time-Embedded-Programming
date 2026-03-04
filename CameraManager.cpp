@@ -1,63 +1,62 @@
 #include "CameraManager.hpp"
 #include <iostream>
 
-// 构造函数
+// Constructor
 CameraManager::CameraManager(int index) : cameraIndex(index), isRunning(false) {
-    // 初始化 ROI 区域
+    // initialization ROI 
     roiRect = cv::Rect(100, 50, 440, 380);
 }
 
-// 析构函数
+// Constructor
 CameraManager::~CameraManager() {
     stop();
 }
 
-// 初始化
+// initialization
 bool CameraManager::init() {
     cap.open(cameraIndex);
     if (!cap.isOpened()) return false;
 
-    // 设置参数，降低分辨率以提高帧率（符合实时性要求）
+    // Adjust parameters to lower the resolution and increase the frame rate
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
     return true;
 }
 
-// 开启采集（多线程版本）
+// start capture
 void CameraManager::startCapture(FrameCallback callback) {
     if (isRunning) return;
     isRunning = true;
 
-    // 启动独立线程，不阻塞主程序
+    // Start a separate thread to avoid blocking the main program.
     captureThread = std::thread([this, callback]() {
         cv::Mat frame, roi;
         while (isRunning) {
             if (!cap.read(frame)) break;
             cv::flip(frame, frame, 1); // 镜像
 
-            // 预处理
+            // Preprocessing
             if (roiRect.x + roiRect.width <= frame.cols && roiRect.y + roiRect.height <= frame.rows) {
                 roi = frame(roiRect).clone();
             } else {
                 roi = frame.clone(); // 保护逻辑
             }
 
-            // 绘制框方便调试 (可选，会画在原图上)
+            // The drawing box facilitates debugging
             cv::rectangle(frame, roiRect, cv::Scalar(255, 0, 0), 2);
 
-            // 执行回调：将处理好的 ROI 传出去
+            // Execute callback: Pass out the processed ROI.
             if (callback) {
-                callback(roi); // 传出 ROI 用于识别
-                // 如果你想在主界面显示原图，可以通过回调传出 frame，或者在 main 中显示
+                callback(roi); 
             }
 
-            // 简单的帧率控制，避免占用 100% CPU
+            // preventing 100% CPU
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
     });
 }
 
-// 停止采集
+// stop capture
 void CameraManager::stop() {
     isRunning = false;
     if (captureThread.joinable()) {
@@ -66,4 +65,5 @@ void CameraManager::stop() {
     if (cap.isOpened()) {
         cap.release();
     }
+
 }
