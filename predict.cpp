@@ -7,13 +7,13 @@ using namespace cv;
 using namespace cv::ml;
 
 int main() {
-    // 加载模型
+    // loading model
     Ptr<KNearest> knn = StatModel::load<KNearest>("knn_model.xml");
     if (knn.empty()) {
         cout << "❌ 错误：找不到 knn_model.xml" << endl;
         return -1;
     }
-    // 使用 GStreamer 管道：在硬件层面就完成 640x480 的缩放，减轻总线压力
+    // using GStreamer terminal：finish 640x480 resize 
     string pipeline = "libcamerasrc ! video/x-raw, width=640, height=480, framerate=30/1 ! videoconvert ! appsink";
     
     VideoCapture cap(pipeline, CAP_GSTREAMER);
@@ -22,9 +22,9 @@ int main() {
         cout << "❌ GStreamer 管道启动失败，尝试普通模式..." << endl;
         cap.open(0); 
     }
-// 强制设置格式为 MJPG（减少带宽压力）
+// setting MJPG
     cap.set(CAP_PROP_FOURCC, VideoWriter::fourcc('M', 'J', 'P', 'G'));
-    // 强制设置分辨率为 640x480 或 320x240
+    //setting 640x480 or 320x240
     cap.set(CAP_PROP_FRAME_WIDTH, 640);
     cap.set(CAP_PROP_FRAME_HEIGHT, 480);
 
@@ -49,17 +49,17 @@ int main() {
         float result = knn->predict(Mat(descriptors).t());
         char current_char = 'A' + (int)result;
 
-        // 绘制结果
+        // diagram result
         string text = "Gesture: ";
         text += current_char;
         putText(frame, text, Point(20, 60), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 2);
         
         imshow("Hand Sign Recognition", frame);
 
-        // 稳定性播报
+        // report stability
         if (current_char == last_char) {
             stable_count++;
-            if (stable_count == 15) { // 连续 15 帧相同才播报
+            if (stable_count == 15) { //It will only be broadcast if 15 consecutive frames are identical.
                 cout << ">>> 识别到: " << current_char << endl;
                 string cmd = "espeak '" + string(1, current_char) + "' &";
                 system(cmd.c_str());
