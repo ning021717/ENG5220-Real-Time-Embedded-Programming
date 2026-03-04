@@ -1,13 +1,13 @@
-# 忽略编译生成的临时文件夹
+# Ignore the temporary folder generated during compilation
 cmake-build-debug/
 build/
 bin/
 lib/
 
-# 忽略 CLion 的配置文件夹
+# Ignore CLion's configuration folder
 .idea/
 
-# 忽略所有编译产生的中间文件
+# Ignore all intermediate files generated during compilation
 *.o
 *.obj
 *.exe
@@ -17,6 +17,6 @@ lib/
 *.a
 *.lib
 
-# 忽略 Python 缓存（如果你用了 Python）
+# Ignore Python cache
 __pycache__/
 *.pyc
