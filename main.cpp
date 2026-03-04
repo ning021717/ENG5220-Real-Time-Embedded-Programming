@@ -1,14 +1,14 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/ml.hpp> // 必须引入机器学习模块
+#include <opencv2/ml.hpp> // A machine learning module must be introduced.
 #include <iostream>
 #include <vector>
 #include <string>
 
 using namespace cv;
-using namespace cv::ml; // 使用机器学习命名空间
+using namespace cv::ml; // Using machine learning namespaces
 using namespace std;
 
-// 肤色阈值 
+// Skin color threshold 
 int H_MIN = 0;
 int H_MAX = 20;
 int S_MIN = 30;
@@ -20,12 +20,12 @@ const string WINDOW_CAPTURE = "Sign Language Translator";
 const string WINDOW_MASK = "Binary Mask";
 const string WINDOW_TRACKBAR = "Settings";
 
-// 必须和训练时保持一致！
+// It must be consistent with the training!
 const int IMG_SIZE = 50; 
 
 void on_trackbar(int, void*) {}
 
-// 辅助函数：把数字 0, 1, 2 变成字母 'A', 'B', 'C'
+// Auxiliary function: Convert the numbers 0, 1, 2 into the letters 'A', 'B', 'C'.
 string getLabelText(float label) {
     int i = (int)label;
     if (i == 0) return "A";
@@ -35,7 +35,7 @@ string getLabelText(float label) {
 }
 
 int main() {
-    // 1. 加载训练好的模型
+    // 1. loading model
     cout << "正在加载模型..." << endl;
     Ptr<KNearest> knn = KNearest::load("knn_model.xml"); // 确保文件名对
 
@@ -45,7 +45,7 @@ int main() {
     }
     cout << "模型加载成功！" << endl;
 
-    // 2. 打开摄像头 
+    // 2. camera on 
     VideoCapture cap(0, CAP_V4L2);
     if (!cap.isOpened()) {
         cerr << "错误：无法打开摄像头" << endl;
@@ -79,38 +79,38 @@ int main() {
         cvtColor(roi, hsv, COLOR_BGR2HSV);
         inRange(hsv, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), mask);
 
-        // 形态学操作：去噪
+        // noisy remove
         Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
         erode(mask, mask, kernel);
         dilate(mask, mask, kernel);
 
-        // === 核心预测逻辑 ===
-        // 1. 复制一份 mask 用于处理，以免破坏显示用的图像
+        // logical
+        // 1. Make a copy of the mask for processing to avoid damaging the image used for display.
         mask.copyTo(processingImg);
 
-        // 2. 调整大小 
+        // 2. switching size
         resize(processingImg, processingImg, Size(IMG_SIZE, IMG_SIZE));
 
-        // 3. 扁平化 
+        // 3. Flat 
         processingImg = processingImg.reshape(1, 1);
 
-        // 4. 转为浮点数
+        // 4. floating
         processingImg.convertTo(processingImg, CV_32F);
 
-        // 5. 让模型预测
+        // 5. forecast
         float result = knn->findNearest(processingImg, 5, noArray()); // K=5
 
-        // 6. 获取结果文本
+        // 6. getting text
         string text = getLabelText(result);
 
-        // === 绘制结果 ===
-        // 在 ROI 框上方显示识别结果
-        // 只有当 Mask 里有白色像素时才识别（避免把全黑背景识别成 A）
+        // result
+        // show on ROI
+        // The image is only recognized if there are white pixels in the mask (to avoid recognizing a completely black background as an A).
         if (countNonZero(mask) > 1000) {
-            rectangle(frame, roiRect, Scalar(0, 255, 0), 2); // 绿色框：识别中
+            rectangle(frame, roiRect, Scalar(0, 255, 0), 2); // Green box: Recognizing
             putText(frame, "Detected: " + text, Point(350, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
         } else {
-            rectangle(frame, roiRect, Scalar(0, 0, 255), 2); // 红色框：没检测到手
+            rectangle(frame, roiRect, Scalar(0, 0, 255), 2); // Red box: No hand detected
             putText(frame, "No Hand", Point(350, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
         }
 
