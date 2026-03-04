@@ -8,23 +8,23 @@ using namespace cv;
 using namespace cv::ml;
 
 int main() {
-    // 1. 设置数据集路径和识别的字母范围
+    // 1. Set the dataset path and the range of letters to be recognized.
     string path = "dataset/";
     vector<Mat> trainData;
     vector<int> trainLabels;
 
-    // HOG 特征提取器 (参数必须与预测程序完全一致)
+    // HOG detect
     HOGDescriptor hog(Size(64, 64), Size(16, 16), Size(8, 8), Size(8, 8), 9);
 
     cout << "📂 开始读取数据集..." << endl;
 
-    // 2. 遍历 A-Z 文件夹
+    // 2. Traverse folders A-Z
     for (int i = 0; i < 26; i++) {
         char folderName = 'A' + i;
         string folderPath = path + folderName + "/";
         
         vector<String> filenames;
-        glob(folderPath + "*.jpg", filenames); // 读取文件夹下所有 jpg 格式图片
+        glob(folderPath + "*.jpg", filenames); 
 
         if (filenames.empty()) {
             cout << "⚠️ 警告: 文件夹 " << folderName << " 为空，跳过。" << endl;
@@ -37,15 +37,15 @@ int main() {
             Mat img = imread(file, IMREAD_GRAYSCALE);
             if (img.empty()) continue;
 
-            // 统一缩放到 64x64
+            //resize 64
             resize(img, img, Size(64, 64));
 
-            // 提取 HOG 特征
+            // put HOG figures
             vector<float> descriptors;
             hog.compute(img, descriptors);
 
             trainData.push_back(Mat(descriptors).t());
-            trainLabels.push_back(i); // 标签：A=0, B=1...
+            trainLabels.push_back(i); // labeling：A=0, B=1...
         }
     }
 
@@ -54,20 +54,20 @@ int main() {
         return -1;
     }
 
-    // 3. 将数据转换为 OpenCV 机器学习需要的格式
+    // 3. Convert the data into the format required by OpenCV machine learning.
     Mat trainMat;
     vconcat(trainData, trainMat); // 合并所有特征行
     trainMat.convertTo(trainMat, CV_32F);
     Mat labelMat(trainLabels);
 
-    // 4. 创建并训练 KNN 模型
+    // 4. Create and train a KNN model
     cout << "🧠 正在训练 KNN 模型，请稍候..." << endl;
     Ptr<KNearest> knn = KNearest::create();
     knn->setDefaultK(3); // 设置 K 值为 3
     knn->setIsClassifier(true);
     knn->train(trainMat, ROW_SAMPLE, labelMat);
 
-    // 5. 保存模型
+    // 5. Save Model
     knn->save("knn_model.xml");
     cout << "✅ 训练完成！模型已保存为: knn_model.xml" << endl;
 
