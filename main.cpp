@@ -8,7 +8,7 @@ using namespace cv;
 using namespace cv::ml; // 使用机器学习命名空间
 using namespace std;
 
-// 肤色阈值 (保持你之前调好的值！)
+// 肤色阈值 
 int H_MIN = 0;
 int H_MAX = 20;
 int S_MIN = 30;
@@ -45,7 +45,7 @@ int main() {
     }
     cout << "模型加载成功！" << endl;
 
-    // 2. 打开摄像头 (记得用 libcamerify 运行如果需要)
+    // 2. 打开摄像头 
     VideoCapture cap(0, CAP_V4L2);
     if (!cap.isOpened()) {
         cerr << "错误：无法打开摄像头" << endl;
@@ -88,10 +88,10 @@ int main() {
         // 1. 复制一份 mask 用于处理，以免破坏显示用的图像
         mask.copyTo(processingImg);
 
-        // 2. 调整大小 (必须是 50x50，和训练时一样)
+        // 2. 调整大小 
         resize(processingImg, processingImg, Size(IMG_SIZE, IMG_SIZE));
 
-        // 3. 扁平化 (变成一行)
+        // 3. 扁平化 
         processingImg = processingImg.reshape(1, 1);
 
         // 4. 转为浮点数
