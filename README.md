@@ -1,4 +1,5 @@
 # 🚀 Project Status (Updated: 2026-02-24)
+# social media link:https://www.instagram.com/signspeakglasses/
 
 ## 📌 Latest Milestone: Full Scale Data Expansion
 The system has successfully transitioned from a component prototype to a **data-complete** sign language recognition system. All 26 letters of the alphabet are now represented in the local and remote datasets.
