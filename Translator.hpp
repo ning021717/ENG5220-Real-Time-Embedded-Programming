@@ -7,26 +7,30 @@
 
 class Translator {
 public:
+    /**
+     * @brief Translate internal action ID to human-readable language (Chinese + English)
+     * @param action Internal action identifier (e.g., "Action_A", "Action_B")
+     * @note Implements simple debouncing to avoid repeated output of the same translation
+     */
     void translate(std::string action) {
-        // 映射库：将内部 ID 转换为人类语言
+        // Mapping dictionary: convert internal action IDs to human-readable language
         static std::map<std::string, std::string> dict = {
             {"Action_A", "你好 (Hello)"},
             {"Action_B", "谢谢 (Thank You)"}
         };
 
-        if (action != lastOutput) { // 简单防抖：避免重复输出
-            std::cout << "\r[翻译]: " << (dict.count(action) ? dict[action] : "识别中...") << std::flush;
+        // Simple debouncing: avoid repeated output of the same translation result
+        if (action != lastOutput) { 
+            // Print translation (or "Recognizing..." if action not in dictionary)
+            // \r: Carriage return to overwrite the same line; std::flush: force output immediately
+            std::cout << "\r[Translation]: " << (dict.count(action) ? dict[action] : "Recognizing...") << std::flush;
             lastOutput = action;
         }
     }
+
 private:
-    std::string lastOutput;
+    std::string lastOutput;  // Store last translated action for debouncing check
 };
-#endif
-// Created by 金扫帚奖最佳演员 on 2026/2/6.
-//
 
-#ifndef OPENCV_TEST_TRANSLATOR_H
-#define OPENCV_TEST_TRANSLATOR_H
+#endif // OPENCV_TEST_TRANSLATOR_H  // End of header guard
 
-#endif //OPENCV_TEST_TRANSLATOR_H
