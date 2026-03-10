@@ -14,15 +14,18 @@ public:
 
     GestureRecognizer();
 
-    // 核心处理函数
+   // Orchestrates feature extraction, sequence buffering, and gesture matching
     void process(const cv::Mat& frame, const SignDatabase& db, RecognitionCallback callback);
 
 private:
+    // Circular buffer to store sequential feature vectors (max 30 frames)
     std::deque<std::vector<float>> sequenceBuffer;
 
-    // 修复：必须在这里声明这两个函数，.cpp 才能实现它们
+    // Fix: These two functions MUST be declared here to be implemented in the .cpp file
+    // (Class member functions need declaration in header before implementation in source file)
     std::vector<float> extractFeatures(const cv::Mat& frame);
     float calculateDTW(const std::deque<std::vector<float>>& seq, const std::vector<float>& templ);
 };
+
 
 #endif
