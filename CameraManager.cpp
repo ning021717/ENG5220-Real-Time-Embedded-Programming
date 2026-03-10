@@ -33,13 +33,13 @@ void CameraManager::startCapture(FrameCallback callback) {
         cv::Mat frame, roi;
         while (isRunning) {
             if (!cap.read(frame)) break;
-            cv::flip(frame, frame, 1); // 镜像
+            cv::flip(frame, frame, 1); // Flip the frame horizontally (mirror effect)
 
             // Preprocessing
             if (roiRect.x + roiRect.width <= frame.cols && roiRect.y + roiRect.height <= frame.rows) {
                 roi = frame(roiRect).clone();
             } else {
-                roi = frame.clone(); // 保护逻辑
+                roi = frame.clone(); // Protection logic: deep copy of frame (avoid altering original)
             }
 
             // The drawing box facilitates debugging
@@ -67,3 +67,4 @@ void CameraManager::stop() {
     }
 
 }
+
