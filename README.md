@@ -25,7 +25,6 @@ The system has successfully evolved from a static component prototype (KNN/HSV) 
 * **📂 Organized Storage:** Standardized directory structure (`/dataset/A-Z/`) for automated model training.
 
 ### 🌟 NEW: Milestone 4 — 2026-03-11 (Dynamic Temporal Recognition & Microservice Architecture)
-* **⚙️ Architectural Leap:** Replaced the monolithic C++ app with a **Python (Vision/ML AI Brain) + C++ (Audio/NLP Trunk)** UDP Microservice pipeline.
 * **👁️ Deep Learning Vision:** Upgraded from fragile HSV color detection to robust **TFLite Bare-metal Tensor Inference** (21-point hand skeleton tracking).
 * **⏱️ Temporal Engineering:** Engineered a 15-frame sliding window to capture physical movement trajectories. Extracted **7D Feature Vectors** (Instant Velocity `dX/dY` + Normalized Finger Flexion Ratios).
 * **🧠 Machine Learning Engine:** Built a custom data collector and trained a **Random Forest Classifier** achieving ~92% validation accuracy on dynamic gesture trajectories (e.g., *Thank You*, *Hello*).
@@ -36,7 +35,7 @@ The system has successfully evolved from a static component prototype (KNN/HSV) 
 ## 📊 Current Capability
 * **Dynamic Word Recognition:** Shifted from recognizing static letters to understanding dynamic, multi-frame physical gestures based on temporal paths.
 * **Environmental Robustness:** Totally immune to background clutter, lighting changes, and skin-tone variations thanks to TFLite skeletal extraction.
-* **Decoupled Performance:** The AI vision pipeline (Python) runs independently from the UI/Audio logic (C++), communicating seamlessly via UDP (`Port 5005`).
+* **Decoupled Performance:** The AI vision pipeline runs independently from the UI/Audio logic (C++), communicating seamlessly via UDP (`Port 5005`).
 * **Instant Extensibility:** New gestures can be added strictly via data-driven workflows (record CSV -> train `.pkl`) without altering core routing logic.
 
 
@@ -47,14 +46,6 @@ The system has successfully evolved from a static component prototype (KNN/HSV) 
 
 ```text
 .
-├── 🧠 New Microservice & ML Pipeline (Milestone 4)
-│   ├── ai_brain.py             # CORE (Backend): Real-time inference & UDP Broadcaster
-│   ├── receiver.cpp            # CORE (Frontend): C++ UDP Listener, State Machine & TTS Engine
-│   ├── data_collector.py       # ML Tool: Records 15-frame/105D matrices to CSV
-│   ├── train_model.py          # ML Tool: Scikit-Learn Random Forest training script
-│   ├── gesture_dataset.csv     # Dynamic temporal gesture dataset (Tracked small sample)
-│   ├── brain_tflite.py         # Sandbox: Bare-metal TFLite Skeleton Extraction
-│   └── feature_extractor.py    # Sandbox: 7D Temporal Vector Visualization
 │
 ├── 🏛️ Legacy C++ Core (Milestone 1-3)
 │   ├── main.cpp, header.h      # Legacy monolithic entry point
