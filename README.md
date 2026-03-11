@@ -44,21 +44,33 @@ The system has successfully evolved from a static component prototype (KNN/HSV) 
 ---
 
 ## 📂 Project Structure
+
 ```text
 .
-├── dataset/                    # Legacy static gesture images (A-Z)
-├── capture_images.cpp          # Legacy multi-threaded acquisition tool
-├── train.cpp                   # Legacy KNN training logic
-├── knn_model.xml               # Legacy trained KNN model
+├── 🧠 New Microservice & ML Pipeline (Milestone 4)
+│   ├── ai_brain.py             # CORE (Backend): Real-time inference & UDP Broadcaster
+│   ├── receiver.cpp            # CORE (Frontend): C++ UDP Listener, State Machine & TTS Engine
+│   ├── data_collector.py       # ML Tool: Records 15-frame/105D matrices to CSV
+│   ├── train_model.py          # ML Tool: Scikit-Learn Random Forest training script
+│   ├── gesture_dataset.csv     # Dynamic temporal gesture dataset (Tracked small sample)
+│   ├── brain_tflite.py         # Sandbox: Bare-metal TFLite Skeleton Extraction
+│   └── feature_extractor.py    # Sandbox: 7D Temporal Vector Visualization
 │
-├── brain_tflite.py             # Sandbox: Bare-metal TFLite Skeleton Extraction
-├── feature_extractor.py        # Sandbox: 7D Temporal Vector Visualization
-├── data_collector.py           # ML Tool: Records 15-frame/105D matrices to CSV
-├── gesture_dataset.csv         # New: Dynamic temporal gesture dataset
-├── train_model.py              # ML Tool: Scikit-Learn Random Forest training script
-├── gesture_rf_model.pkl        # New: Serialized Random Forest "AI Chip"
+├── 🏛️ Legacy C++ Core (Milestone 1-3)
+│   ├── main.cpp, header.h      # Legacy monolithic entry point
+│   ├── CameraManager.cpp/.hpp  # OOP wrapper for libcamera pipeline
+│   ├── GestureRecognizer.cpp   # Legacy HSV/Color-threshold logic
+│   ├── capture_images.cpp      # Multi-threaded image acquisition tool
+│   ├── train.cpp, predict.cpp  # Legacy KNN training & inference logic
+│   └── hand_gesture.cpp        # Static gesture bounding box calculator
 │
-├── ai_brain.py                 # CORE (Backend): Real-time inference & UDP Broadcaster
-├── receiver.cpp                # CORE (Frontend): UDP Listener, State Machine & TTS Engine
-├── CMakeLists.txt              # Build configuration for C++ Microservices
+├── 🧪 Testing & Validation
+│   ├── defects_test.cpp        # Unit tests for hardware/pipeline defects
+│   └── SignDatabaseTest.cpp    # Tests for sign mapping storage
+│
+├── ⚙️ Build & Config
+│   ├── CMakeLists.txt          # Unified C++ build configuration (Receiver & Legacy)
+│   └── .gitignore              # Ignores large datasets (/dataset), .pkl, .tflite, and .xml models
+│
 └── README.md                   # Project documentation & logs
+(Note: Large binary models like hand_landmark.tflite, gesture_rf_model.pkl, and the raw image /dataset/ folder are intentionally excluded from version control via .gitignore to maintain repository performance.)
