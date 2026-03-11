@@ -1,8 +1,8 @@
-# 🚀 Project Status (Updated: 2026-02-24)
-# social media link:https://www.instagram.com/signspeakglasses/
+# 🚀 Project Status (Updated: 2026-03-11)
+# 🌐 Social Media Link: https://www.instagram.com/signspeakglasses/
 
-## 📌 Latest Milestone: Full Scale Data Expansion
-The system has successfully transitioned from a component prototype to a **data-complete** sign language recognition system. All 26 letters of the alphabet are now represented in the local and remote datasets.
+## 📌 Latest Milestone: Temporal Action Recognition & Microservice Architecture
+The system has successfully evolved from a static component prototype (KNN/HSV) to a **Data-Driven Dynamic Sign Language Recognition System**. We completely overhauled the core to support temporal tracking, machine learning (Random Forest), and inter-process communication (IPC) for a decoupled, robust pipeline.
 
 ---
 
@@ -19,17 +19,25 @@ The system has successfully transitioned from a component prototype to a **data-
 * **🗣️ Interactive Output:** TTS (Text-to-Speech) integrated for real-time voice feedback.
 
 ### ✅ Milestone 3 — 2026-02-24 (Full Dataset Expansion & Repository Recovery)
-* **📚 Dataset Completion:** Successfully expanded from 3 classes to the **full alphabet (A–Z)**.
-* **🛡️ Version Control Resilience:** Recovered project core following a local environment reset; synchronized local workspace with the remote GitHub repository.
-* **🔐 Secure Workflow:** Implemented Personal Access Token (PAT) authentication for secure remote synchronization.
+* **📚 Dataset Completion:** Successfully expanded from 3 classes to the **full static alphabet (A–Z)**.
+* **🛡️ Version Control Resilience:** Recovered project core following a local environment reset.
+* **🔐 Secure Workflow:** Implemented PAT authentication for secure remote synchronization.
 * **📂 Organized Storage:** Standardized directory structure (`/dataset/A-Z/`) for automated model training.
+
+### 🌟 NEW: Milestone 4 — 2026-03-11 (Dynamic Temporal Recognition & Microservice Architecture)
+* **⚙️ Architectural Leap:** Replaced the monolithic C++ app with a **Python (Vision/ML AI Brain) + C++ (Audio/NLP Trunk)** UDP Microservice pipeline.
+* **👁️ Deep Learning Vision:** Upgraded from fragile HSV color detection to robust **TFLite Bare-metal Tensor Inference** (21-point hand skeleton tracking).
+* **⏱️ Temporal Engineering:** Engineered a 15-frame sliding window to capture physical movement trajectories. Extracted **7D Feature Vectors** (Instant Velocity `dX/dY` + Normalized Finger Flexion Ratios).
+* **🧠 Machine Learning Engine:** Built a custom data collector and trained a **Random Forest Classifier** achieving ~92% validation accuracy on dynamic gesture trajectories (e.g., *Thank You*, *Hello*).
+* **🛡️ System Hardening:** Diagnosed and bypassed Raspberry Pi's OverlayFS (Read-Only RAM disk limitation) to unlock full 64-bit OS / 64GB storage capabilities for deep learning deployment. Implemented *Absolute Temporal Cooldown* and *Hallucination Filters* to eliminate hardware debounce and return-stroke noise.
 
 ---
 
 ## 📊 Current Capability
-* **Full Alphabet Ready:** System is prepared for training across all 26 gesture classes.
-* **Data Persistence:** Remote backup of all capture scripts and datasets verified on GitHub.
-* **Stable Infrastructure:** Verified end-to-end compatibility between the capture tool and the embedded filesystem.
+* **Dynamic Word Recognition:** Shifted from recognizing static letters to understanding dynamic, multi-frame physical gestures based on temporal paths.
+* **Environmental Robustness:** Totally immune to background clutter, lighting changes, and skin-tone variations thanks to TFLite skeletal extraction.
+* **Decoupled Performance:** The AI vision pipeline (Python) runs independently from the UI/Audio logic (C++), communicating seamlessly via UDP (`Port 5005`).
+* **Instant Extensibility:** New gestures can be added strictly via data-driven workflows (record CSV -> train `.pkl`) without altering core routing logic.
 
 
 
@@ -38,8 +46,19 @@ The system has successfully transitioned from a component prototype to a **data-
 ## 📂 Project Structure
 ```text
 .
-├── dataset/             # Organized gesture images (A-Z)
-├── capture_images.cpp   # Multi-threaded acquisition tool
-├── train.cpp            # Feature extraction & KNN training logic
-├── knn_model.xml        # Trained model artifact
-└── README.md            # Project documentation & logs
+├── dataset/                    # Legacy static gesture images (A-Z)
+├── capture_images.cpp          # Legacy multi-threaded acquisition tool
+├── train.cpp                   # Legacy KNN training logic
+├── knn_model.xml               # Legacy trained KNN model
+│
+├── brain_tflite.py             # Sandbox: Bare-metal TFLite Skeleton Extraction
+├── feature_extractor.py        # Sandbox: 7D Temporal Vector Visualization
+├── data_collector.py           # ML Tool: Records 15-frame/105D matrices to CSV
+├── gesture_dataset.csv         # New: Dynamic temporal gesture dataset
+├── train_model.py              # ML Tool: Scikit-Learn Random Forest training script
+├── gesture_rf_model.pkl        # New: Serialized Random Forest "AI Chip"
+│
+├── ai_brain.py                 # CORE (Backend): Real-time inference & UDP Broadcaster
+├── receiver.cpp                # CORE (Frontend): UDP Listener, State Machine & TTS Engine
+├── CMakeLists.txt              # Build configuration for C++ Microservices
+└── README.md                   # Project documentation & logs
