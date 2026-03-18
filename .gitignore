@@ -20,3 +20,24 @@ lib/
 # Ignore Python cache
 __pycache__/
 *.pyc
+
+# CMake & Build Artifacts
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+*.o
+*.out
+
+# Executables
+MainApp
+TrainApp
+CaptureImages
+Receiver
+SignLanguage
+TFLiteTest
+TrainModel
+
+# Deprecated ML Models
+*.pkl
+*.tflite
