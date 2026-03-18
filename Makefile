@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/stlproject/test
+CMAKE_SOURCE_DIR = /home/stlproject/slt_repo
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/stlproject/test
+CMAKE_BINARY_DIR = /home/stlproject/slt_repo
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/stlproject/test/CMakeFiles /home/stlproject/test//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/stlproject/slt_repo/CMakeFiles /home/stlproject/slt_repo//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/stlproject/test/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/stlproject/slt_repo/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -117,37 +117,146 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named SignLanguage
+# Target rules for targets named CaptureImages
 
 # Build rule for target.
-SignLanguage: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 SignLanguage
-.PHONY : SignLanguage
+CaptureImages: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CaptureImages
+.PHONY : CaptureImages
 
 # fast build rule for target.
-SignLanguage/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SignLanguage.dir/build.make CMakeFiles/SignLanguage.dir/build
-.PHONY : SignLanguage/fast
+CaptureImages/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CaptureImages.dir/build.make CMakeFiles/CaptureImages.dir/build
+.PHONY : CaptureImages/fast
 
 #=============================================================================
-# Target rules for targets named TrainModel
+# Target rules for targets named MainApp
 
 # Build rule for target.
-TrainModel: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 TrainModel
-.PHONY : TrainModel
+MainApp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 MainApp
+.PHONY : MainApp
 
 # fast build rule for target.
-TrainModel/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainModel.dir/build.make CMakeFiles/TrainModel.dir/build
-.PHONY : TrainModel/fast
+MainApp/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/build
+.PHONY : MainApp/fast
+
+#=============================================================================
+# Target rules for targets named TrainApp
+
+# Build rule for target.
+TrainApp: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 TrainApp
+.PHONY : TrainApp
+
+# fast build rule for target.
+TrainApp/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainApp.dir/build.make CMakeFiles/TrainApp.dir/build
+.PHONY : TrainApp/fast
+
+CameraManager.o: CameraManager.cpp.o
+.PHONY : CameraManager.o
+
+# target to build an object file
+CameraManager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/CameraManager.cpp.o
+.PHONY : CameraManager.cpp.o
+
+CameraManager.i: CameraManager.cpp.i
+.PHONY : CameraManager.i
+
+# target to preprocess a source file
+CameraManager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/CameraManager.cpp.i
+.PHONY : CameraManager.cpp.i
+
+CameraManager.s: CameraManager.cpp.s
+.PHONY : CameraManager.s
+
+# target to generate assembly for a file
+CameraManager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/CameraManager.cpp.s
+.PHONY : CameraManager.cpp.s
+
+GestureRecognizer.o: GestureRecognizer.cpp.o
+.PHONY : GestureRecognizer.o
+
+# target to build an object file
+GestureRecognizer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/GestureRecognizer.cpp.o
+.PHONY : GestureRecognizer.cpp.o
+
+GestureRecognizer.i: GestureRecognizer.cpp.i
+.PHONY : GestureRecognizer.i
+
+# target to preprocess a source file
+GestureRecognizer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/GestureRecognizer.cpp.i
+.PHONY : GestureRecognizer.cpp.i
+
+GestureRecognizer.s: GestureRecognizer.cpp.s
+.PHONY : GestureRecognizer.s
+
+# target to generate assembly for a file
+GestureRecognizer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/GestureRecognizer.cpp.s
+.PHONY : GestureRecognizer.cpp.s
+
+VoiceSynthesizer.o: VoiceSynthesizer.cpp.o
+.PHONY : VoiceSynthesizer.o
+
+# target to build an object file
+VoiceSynthesizer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/VoiceSynthesizer.cpp.o
+.PHONY : VoiceSynthesizer.cpp.o
+
+VoiceSynthesizer.i: VoiceSynthesizer.cpp.i
+.PHONY : VoiceSynthesizer.i
+
+# target to preprocess a source file
+VoiceSynthesizer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/VoiceSynthesizer.cpp.i
+.PHONY : VoiceSynthesizer.cpp.i
+
+VoiceSynthesizer.s: VoiceSynthesizer.cpp.s
+.PHONY : VoiceSynthesizer.s
+
+# target to generate assembly for a file
+VoiceSynthesizer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/VoiceSynthesizer.cpp.s
+.PHONY : VoiceSynthesizer.cpp.s
+
+capture_images.o: capture_images.cpp.o
+.PHONY : capture_images.o
+
+# target to build an object file
+capture_images.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CaptureImages.dir/build.make CMakeFiles/CaptureImages.dir/capture_images.cpp.o
+.PHONY : capture_images.cpp.o
+
+capture_images.i: capture_images.cpp.i
+.PHONY : capture_images.i
+
+# target to preprocess a source file
+capture_images.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CaptureImages.dir/build.make CMakeFiles/CaptureImages.dir/capture_images.cpp.i
+.PHONY : capture_images.cpp.i
+
+capture_images.s: capture_images.cpp.s
+.PHONY : capture_images.s
+
+# target to generate assembly for a file
+capture_images.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/CaptureImages.dir/build.make CMakeFiles/CaptureImages.dir/capture_images.cpp.s
+.PHONY : capture_images.cpp.s
 
 main.o: main.cpp.o
 .PHONY : main.o
 
 # target to build an object file
 main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SignLanguage.dir/build.make CMakeFiles/SignLanguage.dir/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/main.cpp.o
 .PHONY : main.cpp.o
 
 main.i: main.cpp.i
@@ -155,7 +264,7 @@ main.i: main.cpp.i
 
 # target to preprocess a source file
 main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SignLanguage.dir/build.make CMakeFiles/SignLanguage.dir/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/main.cpp.i
 .PHONY : main.cpp.i
 
 main.s: main.cpp.s
@@ -163,7 +272,7 @@ main.s: main.cpp.s
 
 # target to generate assembly for a file
 main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/SignLanguage.dir/build.make CMakeFiles/SignLanguage.dir/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MainApp.dir/build.make CMakeFiles/MainApp.dir/main.cpp.s
 .PHONY : main.cpp.s
 
 train.o: train.cpp.o
@@ -171,7 +280,7 @@ train.o: train.cpp.o
 
 # target to build an object file
 train.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainModel.dir/build.make CMakeFiles/TrainModel.dir/train.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainApp.dir/build.make CMakeFiles/TrainApp.dir/train.cpp.o
 .PHONY : train.cpp.o
 
 train.i: train.cpp.i
@@ -179,7 +288,7 @@ train.i: train.cpp.i
 
 # target to preprocess a source file
 train.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainModel.dir/build.make CMakeFiles/TrainModel.dir/train.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainApp.dir/build.make CMakeFiles/TrainApp.dir/train.cpp.i
 .PHONY : train.cpp.i
 
 train.s: train.cpp.s
@@ -187,7 +296,7 @@ train.s: train.cpp.s
 
 # target to generate assembly for a file
 train.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainModel.dir/build.make CMakeFiles/TrainModel.dir/train.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TrainApp.dir/build.make CMakeFiles/TrainApp.dir/train.cpp.s
 .PHONY : train.cpp.s
 
 # Help Target
@@ -198,8 +307,21 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... SignLanguage"
-	@echo "... TrainModel"
+	@echo "... CaptureImages"
+	@echo "... MainApp"
+	@echo "... TrainApp"
+	@echo "... CameraManager.o"
+	@echo "... CameraManager.i"
+	@echo "... CameraManager.s"
+	@echo "... GestureRecognizer.o"
+	@echo "... GestureRecognizer.i"
+	@echo "... GestureRecognizer.s"
+	@echo "... VoiceSynthesizer.o"
+	@echo "... VoiceSynthesizer.i"
+	@echo "... VoiceSynthesizer.s"
+	@echo "... capture_images.o"
+	@echo "... capture_images.i"
+	@echo "... capture_images.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

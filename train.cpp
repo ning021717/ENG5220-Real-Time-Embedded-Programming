@@ -2,74 +2,89 @@
 #include <opencv2/ml.hpp>
 #include <iostream>
 #include <vector>
+#include <string>
 
-using namespace std;
 using namespace cv;
 using namespace cv::ml;
+using namespace std;
+
+const int IMG_SIZE = 50; 
+
+// Dynamic loader: Returns true if folder exists and has images
+bool load_images(string directory, int label, Mat& trainData, vector<int>& trainLabels) {
+    vector<String> filenames;
+    
+    // [CRITICAL FIX] Catch OpenCV 4.10 exception if the folder does not exist at all
+    try {
+        glob(directory + "/*.jpg", filenames); 
+    } catch (const cv::Exception& e) {
+        return false; // Folder is missing, safely return false to skip it
+    }
+
+    if(filenames.empty()) {
+        return false; // Folder exists but is empty, safely skip
+    }
+
+    cout << "[INFO] Processing folder " << directory << " (" << filenames.size() << " images)..." << endl;
+
+    for (size_t i = 0; i < filenames.size(); ++i) {
+        // Read strictly as Grayscale since we are loading binary masks
+        Mat img = imread(filenames[i], IMREAD_GRAYSCALE); 
+        
+        if (img.empty()) continue;
+
+        resize(img, img, Size(IMG_SIZE, IMG_SIZE));
+        img = img.reshape(1, 1); 
+        img.convertTo(img, CV_32F);
+
+        trainData.push_back(img);
+        trainLabels.push_back(label);
+    }
+    return true;
+}
 
 int main() {
-    // 1. Set the dataset path and the range of letters to be recognized.
-    string path = "dataset/";
-    vector<Mat> trainData;
+    Mat trainData;
     vector<int> trainLabels;
 
-    // HOG detect
-    HOGDescriptor hog(Size(64, 64), Size(16, 16), Size(8, 8), Size(8, 8), 9);
+    cout << "[INFO] Starting dynamic data loader..." << endl;
+    int classesLoaded = 0;
 
-    cout << "📂 开始读取数据集..." << endl;
-
-    // 2. Traverse folders A-Z
-    for (int i = 0; i < 26; i++) {
-        char folderName = 'A' + i;
-        string folderPath = path + folderName + "/";
+    // Scan through A to Z dynamically
+    for (int i = 0; i < 26; ++i) {
+        char letter = 'A' + i;
+        string folder = "dataset/" + string(1, letter);
         
-        vector<String> filenames;
-        glob(folderPath + "*.jpg", filenames); 
-
-        if (filenames.empty()) {
-            cout << "⚠️ 警告: 文件夹 " << folderName << " 为空，跳过。" << endl;
-            continue;
-        }
-
-        cout << "正在处理字母 " << folderName << " (共 " << filenames.size() << " 张图片)" << endl;
-
-        for (const auto& file : filenames) {
-            Mat img = imread(file, IMREAD_GRAYSCALE);
-            if (img.empty()) continue;
-
-            //resize 64
-            resize(img, img, Size(64, 64));
-
-            // put HOG figures
-            vector<float> descriptors;
-            hog.compute(img, descriptors);
-
-            trainData.push_back(Mat(descriptors).t());
-            trainLabels.push_back(i); // labeling：A=0, B=1...
+        if (load_images(folder, i, trainData, trainLabels)) {
+            classesLoaded++;
         }
     }
 
     if (trainData.empty()) {
-        cout << "❌ 错误：没有提取到任何训练数据！请检查 dataset 文件夹。" << endl;
+        cerr << "[ERROR] No data found! Please record some images first." << endl;
         return -1;
     }
 
-    // 3. Convert the data into the format required by OpenCV machine learning.
-    Mat trainMat;
-    vconcat(trainData, trainMat); // 合并所有特征行
-    trainMat.convertTo(trainMat, CV_32F);
-    Mat labelMat(trainLabels);
+    cout << "--------------------------------------" << endl;
+    cout << "[INFO] Total classes loaded: " << classesLoaded << endl;
+    cout << "[INFO] Total training samples: " << trainData.rows << endl;
+    cout << "[INFO] Training KNN model. Please wait..." << endl;
 
-    // 4. Create and train a KNN model
-    cout << "🧠 正在训练 KNN 模型，请稍候..." << endl;
+    // Initialize KNN Machine Learning model
     Ptr<KNearest> knn = KNearest::create();
-    knn->setDefaultK(3); // 设置 K 值为 3
+    knn->setDefaultK(5);
     knn->setIsClassifier(true);
-    knn->train(trainMat, ROW_SAMPLE, labelMat);
+    
+    // Convert labels vector to strictly formatted OpenCV Matrix
+    Mat labelsMat(trainLabels);
+    labelsMat.convertTo(labelsMat, CV_32S);
 
-    // 5. Save Model
+    Ptr<TrainData> trainingData = TrainData::create(trainData, ROW_SAMPLE, labelsMat);
+    knn->train(trainingData);
+
     knn->save("knn_model.xml");
-    cout << "✅ 训练完成！模型已保存为: knn_model.xml" << endl;
+    cout << "[SUCCESS] Model trained and saved as knn_model.xml!" << endl;
+    cout << "--------------------------------------" << endl;
 
     return 0;
 }

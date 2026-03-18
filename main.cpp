@@ -1,127 +1,155 @@
 #include <opencv2/opencv.hpp>
-#include <opencv2/ml.hpp> // A machine learning module must be introduced.
 #include <iostream>
-#include <vector>
-#include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable> 
+#include <atomic>
+#include <csignal>
+#include <unistd.h>           
+
+#include "CameraManager.hpp"  
+#include "GestureRecognizer.hpp" // [NEW] Our encapsulated AI engine
+#include "VoiceSynthesizer.hpp" // [NEW] Include our Audio Engine
 
 using namespace cv;
-using namespace cv::ml; // Using machine learning namespaces
 using namespace std;
 
-// Skin color threshold 
-int H_MIN = 0;
-int H_MAX = 20;
-int S_MIN = 30;
-int S_MAX = 255;
-int V_MIN = 30;
-int V_MAX = 255;
+// ==========================================
+// IPC & Thread Synchronization Tools
+// ==========================================
+mutex mtx;
+condition_variable cv_frame_ready;
+Mat shared_roi;
+bool frame_ready = false;
+atomic<bool> keep_running(true);
 
 const string WINDOW_CAPTURE = "Sign Language Translator";
 const string WINDOW_MASK = "Binary Mask";
-const string WINDOW_TRACKBAR = "Settings";
 
-// It must be consistent with the training!
-const int IMG_SIZE = 50; 
-
+// Dummy callback for trackbars
 void on_trackbar(int, void*) {}
 
-// Auxiliary function: Convert the numbers 0, 1, 2 into the letters 'A', 'B', 'C'.
-string getLabelText(float label) {
-    int i = (int)label;
-    if (i == 0) return "A";
-    if (i == 1) return "B";
-    if (i == 2) return "C";
-    return "Unknown";
+// ==========================================
+// SIGINT (Ctrl+C) Interceptor with "Double-Tap" Force Quit
+// ==========================================
+void signalHandler(int signum) {
+    static int sig_count = 0;
+    sig_count++;
+    
+    if (sig_count >= 2) {
+        cout << "\n[FATAL] Multiple interrupts detected. Force quitting immediately!" << endl;
+        _exit(1); 
+    }
+    
+    cout << "\n[INTERRUPT] Signal (" << signum << ") received. Shutting down gracefully..." << endl;
+    keep_running = false;            
+    cv_frame_ready.notify_all(); 
+}
+
+// ==========================================
+// EVENT CALLBACK: Triggered by CameraManager
+// ==========================================
+void onFrameCaptured(const cv::Mat& roi) {
+    {
+        lock_guard<mutex> lock(mtx);
+        shared_roi = roi.clone();
+        frame_ready = true;
+    }
+    cv_frame_ready.notify_one(); 
 }
 
 int main() {
-    // 1. loading model
-    cout << "正在加载模型..." << endl;
-    Ptr<KNearest> knn = KNearest::load("knn_model.xml"); // 确保文件名对
+    signal(SIGINT, signalHandler);
 
-    if (knn.empty()) {
-        cerr << "错误：找不到 knn_model.xml！请先运行 TrainModel。" << endl;
-        return -1;
-    }
-    cout << "模型加载成功！" << endl;
-
-    // 2. camera on 
-    VideoCapture cap(0, CAP_V4L2);
-    if (!cap.isOpened()) {
-        cerr << "错误：无法打开摄像头" << endl;
+    // 1. INITIALIZE CAMERA FIRST
+    cout << "[INFO] Initializing Camera Pipeline..." << endl;
+    CameraManager cam(0);
+    if (!cam.init()) {
+        cerr << "[ERROR] Failed to initialize camera. Hardware might be disconnected." << endl;
         return -1;
     }
 
-    cap.set(CAP_PROP_FRAME_WIDTH, 640);
-    cap.set(CAP_PROP_FRAME_HEIGHT, 480);
+    // 2. INITIALIZE AI ENGINE (Encapsulated OOP)
+    cout << "[INFO] Loading AI Engine..." << endl;
+    GestureRecognizer recognizer("knn_model.xml");
+    if (!recognizer.isModelLoaded()) return -1;
+    
+    cout << "[INFO] Loading Voice Synthesizer..." << endl;
+    VoiceSynthesizer voice; 
 
+    // Variables for Anti-Spam Logic
+    string lastSpokenText = "";
+    int framesConfirmed = 0;
+    const int CONFIRMATION_THRESHOLD = 10; // Must see same gesture for 10 frames
+    
+    // 3. CREATE GUI WINDOWS & BIND TRACKBARS TO OBJECT
     namedWindow(WINDOW_CAPTURE);
     namedWindow(WINDOW_MASK);
-    namedWindow(WINDOW_TRACKBAR);
+    createTrackbar("H Min", WINDOW_CAPTURE, &recognizer.H_MIN, 179, on_trackbar);
+    createTrackbar("H Max", WINDOW_CAPTURE, &recognizer.H_MAX, 179, on_trackbar);
+    createTrackbar("S Min", WINDOW_CAPTURE, &recognizer.S_MIN, 255, on_trackbar);
+    createTrackbar("S Max", WINDOW_CAPTURE, &recognizer.S_MAX, 255, on_trackbar);
 
-    createTrackbar("H Min", WINDOW_TRACKBAR, &H_MIN, 179, on_trackbar);
-    createTrackbar("H Max", WINDOW_TRACKBAR, &H_MAX, 179, on_trackbar);
-    createTrackbar("S Min", WINDOW_TRACKBAR, &S_MIN, 255, on_trackbar);
-    createTrackbar("S Max", WINDOW_TRACKBAR, &S_MAX, 255, on_trackbar);
-    createTrackbar("V Min", WINDOW_TRACKBAR, &V_MIN, 255, on_trackbar);
-    createTrackbar("V Max", WINDOW_TRACKBAR, &V_MAX, 255, on_trackbar);
+    cam.startCapture(onFrameCaptured);
 
-    Mat frame, roi, hsv, mask, processingImg;
-    Rect roiRect(350, 50, 250, 250); 
+    Mat local_roi, mask;
+    cout << "[INFO] Real-Time System Online (Press ESC or Ctrl+C to quit)" << endl;
 
-    while (true) {
-        cap >> frame;
-        if (frame.empty()) break;
-
-        flip(frame, frame, 1);
-        roi = frame(roiRect);
-
-        cvtColor(roi, hsv, COLOR_BGR2HSV);
-        inRange(hsv, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), mask);
-
-        // noisy remove
-        Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
-        erode(mask, mask, kernel);
-        dilate(mask, mask, kernel);
-
-        // logical
-        // 1. Make a copy of the mask for processing to avoid damaging the image used for display.
-        mask.copyTo(processingImg);
-
-        // 2. switching size
-        resize(processingImg, processingImg, Size(IMG_SIZE, IMG_SIZE));
-
-        // 3. Flat 
-        processingImg = processingImg.reshape(1, 1);
-
-        // 4. floating
-        processingImg.convertTo(processingImg, CV_32F);
-
-        // 5. forecast
-        float result = knn->findNearest(processingImg, 5, noArray()); // K=5
-
-        // 6. getting text
-        string text = getLabelText(result);
-
-        // result
-        // show on ROI
-        // The image is only recognized if there are white pixels in the mask (to avoid recognizing a completely black background as an A).
-        if (countNonZero(mask) > 1000) {
-            rectangle(frame, roiRect, Scalar(0, 255, 0), 2); // Green box: Recognizing
-            putText(frame, "Detected: " + text, Point(350, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
-        } else {
-            rectangle(frame, roiRect, Scalar(0, 0, 255), 2); // Red box: No hand detected
-            putText(frame, "No Hand", Point(350, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+    // ==========================================
+    // CONSUMER THREAD (Event-Driven)
+    // ==========================================
+    while (keep_running) {
+        {
+            unique_lock<mutex> lock(mtx);
+            cv_frame_ready.wait(lock, []{ return frame_ready || !keep_running; });
+            if (!keep_running) break;
+            local_roi = shared_roi.clone();
+            frame_ready = false; 
         }
 
-        imshow(WINDOW_CAPTURE, frame);
-        imshow(WINDOW_MASK, mask);
+        // --- Core Algorithm ---
+        string text = recognizer.predict(local_roi, mask);
 
-        char c = (char)waitKey(30);
-        if (c == 27) break; // ESC 退出
+        // --- Anti-Spam & Voice Logic ---
+        if (text != "No Hand" && text != "Error") {
+            if (text == lastSpokenText) {
+                framesConfirmed++;
+                // If the gesture is stable for 10 consecutive frames, speak it!
+                if (framesConfirmed == CONFIRMATION_THRESHOLD) {
+                    voice.speak(text);
+                }
+            } else {
+                // Gesture changed, reset counter
+                lastSpokenText = text;
+                framesConfirmed = 0;
+            }
+        } else {
+            // Hand lost, reset counter
+            framesConfirmed = 0;
+            lastSpokenText = "";
+        }
+
+        // --- GUI Rendering ---
+        Mat display_frame = local_roi.clone();
+        if (text != "No Hand" && text != "Error") {
+            putText(display_frame, "Detected: " + text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
+        } else {
+            putText(display_frame, text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+        }
+
+        imshow(WINDOW_CAPTURE, display_frame);
+        if (!mask.empty()) imshow(WINDOW_MASK, mask);
+
+        char c = (char)waitKey(1);
+        if (c == 27) { // ESC key
+            keep_running = false;
+            cv_frame_ready.notify_all(); 
+            break;
+        }
     }
 
-    cap.release();
+    cam.stop();
     destroyAllWindows();
+    cout << "[INFO] System shut down successfully." << endl;
     return 0;
 }

@@ -1,4 +1,20 @@
-# 🚀 Project Status (Updated: 2026-02-24)
+## 🛠️ Build and Execution Instructions 
+
+### 1. Compilation
+This project uses CMake for cross-platform building and multithreading linkage (`pthread`).
+
+mkdir build && cd build
+cmake ..
+make
+
+### 2. Running the Real-time Application
+We strictly utilize the libcamera pipeline for video capture as advised in the lectures. To run the core real-time recognition engine:
+
+libcamerify ./MainApp
+
+
+
+# 🚀 Project Status (Updated: 2026-03-18)
 # social media link:https://www.instagram.com/signspeakglasses/
 
 ## 📌 Latest Milestone: Full Scale Data Expansion
