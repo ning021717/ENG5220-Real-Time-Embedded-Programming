@@ -2,30 +2,35 @@
 #define GESTURE_RECOGNIZER_HPP
 
 #include <opencv2/opencv.hpp>
-#include <vector>
-#include <deque>
-#include <functional>
+#include <opencv2/ml.hpp>
 #include <string>
-#include "SignDatabase.hpp"
 
 class GestureRecognizer {
 public:
-    using RecognitionCallback = std::function<void(const std::string&)>;
+    // Constructor: Loads the KNN model
+    GestureRecognizer(const std::string& modelPath);
+    ~GestureRecognizer() = default;
 
-    GestureRecognizer();
+    // Check if model is successfully loaded
+    bool isModelLoaded() const;
 
-   // Orchestrates feature extraction, sequence buffering, and gesture matching
-    void process(const cv::Mat& frame, const SignDatabase& db, RecognitionCallback callback);
+    // Core function: Takes the ROI, returns the predicted text and outputs the binary mask
+    std::string predict(const cv::Mat& roi, cv::Mat& outMask);
+
+    // Public variables for GUI Trackbar bindings
+    int H_MIN = 0;
+    int H_MAX = 20;
+    int S_MIN = 30;
+    int S_MAX = 255;
+    int V_MIN = 30;
+    int V_MAX = 255;
 
 private:
-    // Circular buffer to store sequential feature vectors (max 30 frames)
-    std::deque<std::vector<float>> sequenceBuffer;
+    cv::Ptr<cv::ml::KNearest> knn; // Encapsulated Machine Learning Engine
+    const int IMG_SIZE = 50;       // Must match the training size
 
-    // Fix: These two functions MUST be declared here to be implemented in the .cpp file
-    // (Class member functions need declaration in header before implementation in source file)
-    std::vector<float> extractFeatures(const cv::Mat& frame);
-    float calculateDTW(const std::deque<std::vector<float>>& seq, const std::vector<float>& templ);
+    // Internal helper to convert numeric prediction to A-Z
+    std::string getLabelText(float label) const;
 };
 
-
-#endif
+#endif // GESTURE_RECOGNIZER_HPP

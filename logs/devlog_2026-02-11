@@ -1,0 +1,54 @@
+# Development Log | 2026-02-11
+**Project:** Sign Language Translator Glasses (Real-time Recognition on Raspberry Pi)
+
+---
+
+## 📝 Summary
+Today’s focus was on stabilizing the **Raspberry Pi Camera Module v2 (IMX219)** and establishing a reliable real-time frame acquisition loop. 
+
+> [!IMPORTANT]
+> **Current Status:** Hardware-level image acquisition is fully functional. However, the recognition module is integrated but **unvalidated**, and the system currently does not produce text or letter outputs.
+
+---
+
+## ✅ Completed Work
+
+### 1. Camera Pipeline & Hardware
+* **Hardware Verified:** Confirmed camera functionality using `rpicam-still`. Still image capture is successful.
+* **Resource Management:** Resolved device contention issues where background services (e.g., `viam-csi`) were occupying `/dev/media0`.
+* **Driver Stack:** Validated `libcamera` and GStreamer functionality with the following test pipeline:
+    ```bash
+    gst-launch-1.0 libcamerasrc ! video/x-raw,format=NV12,width=640,height=480 ! fakesink
+    ```
+
+### 2. Real-time Architecture
+* **Threaded Capture:** Implemented a non-blocking threaded loop to handle continuous frame acquisition.
+* **Instrumentation:** Added a frame counter to monitor real-time throughput. Logs confirm that frames are being successfully pulled into the buffer.
+* **Cleanup Logic:** Ensured proper release of camera resources to prevent "Device Busy" errors on script restart.
+
+---
+
+## ⚠️ Issues & Findings (Debugging Status)
+
+| Component | Status | Finding |
+| :--- | :--- | :--- |
+| **Camera** | 🟢 Functional | Can take photos and stream frames. |
+| **Recognition** | 🟡 Unvalidated | Code is present but logic has not been tested against live input. |
+| **Letter Output**| 🔴 Non-functional | No alphabet labels are being printed or logged yet. |
+
+* **Feature Mismatch:** The recognition module expects a feature vector of **1890 floats** (30 frames × 63 features). There is likely a mismatch between the live extractor and the pre-saved `.bin` templates.
+* **OpenCV Backend:** Standard `cv2.VideoCapture(0)` via V4L2 is inconsistent with the new libcamera stack; switching to GStreamer `appsink` is required for stability.
+
+---
+
+## 📅 Next Steps
+1.  **Validate Inference:** Test the feature extraction logic to ensure the output dimensions match the gesture templates.
+2.  **Enable Console Output:** Debug the print logic to ensure recognized letters (A, B, C, etc.) appear in the terminal.
+3.  **Refine Preprocessing:** Align real-time frame sampling with the original template generation parameters.
+4.  **Performance Metrics:** Once recognition is functional, measure the latency from "Hand Gesture" to "Letter Display."
+
+---
+
+## 📂 Artifacts
+* **Templates:** `/home/stlproject/gesture_bin_files`
+* **Logs:** `/home/stlproject/recognition_log.txt` (Current status: Empty)

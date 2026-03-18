@@ -1,41 +1,22 @@
-# ==========================================
-# C++ & OpenCV Project .gitignore
-# ==========================================
-
-# Compiled executables
-SignLanguage
-TrainModel
-CaptureImages
-TFLiteTest
-*.out
-*.exe
-
-# Object files and libraries
-*.o
-*.a
-*.so
-
-# CMake generated files and directories
-CMakeCache.txt
-CMakeFiles/
-Makefile
-cmake_install.cmake
+# Ignore the temporary folder generated during compilation
+cmake-build-debug/
 build/
+bin/
+lib/
 
-# Datasets (Never commit large image folders)
-dataset/
-
-# Machine Learning models (Generated or downloaded)
-*.xml
-*.tflite
-
-# Logs and debug files
-logs/
-*.log
-
-# Editor and OS temporary files
-*~
-*.swp
-.DS_Store
-.vscode/
+# Ignore CLion's configuration folder
 .idea/
+
+# Ignore all intermediate files generated during compilation
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Ignore Python cache
+__pycache__/
+*.pyc

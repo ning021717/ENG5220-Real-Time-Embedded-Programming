@@ -1,8 +1,38 @@
-# 🚀 Project Status (Updated: 2026-03-11)
-# 🌐 Social Media Link: https://www.instagram.com/signspeakglasses/
+## 🚀 Build and Run Instructions
 
-## 📌 Latest Milestone: Temporal Action Recognition & Microservice Architecture
-The system has successfully evolved from a static component prototype (KNN/HSV) to a **Data-Driven Dynamic Sign Language Recognition System**. We completely overhauled the core to support temporal tracking, machine learning (Random Forest), and inter-process communication (IPC) for a decoupled, robust pipeline.
+This project strictly adheres to real-time deterministic design principles, utilizing `libcamera` for video capture, `ALSA`/`espeak` for hardware audio, and multithreading with condition variables for non-blocking I/O.
+
+### 1. Prerequisites
+Ensure you have the required dependencies installed on your Raspberry Pi 5:
+
+sudo apt update
+sudo apt install libopencv-dev cmake espeak-ng gpiod libgpiod-dev
+
+### 2. Compilation
+We use `cmake` for build management. To compile the data collector, trainer, and main application:
+
+mkdir -p build && cd build
+cmake ..
+make -j4
+
+### 3. Execution Workflow
+
+* **Step 1 (Data Collection):** To record new binary mask gestures:
+  `libcamerify ./CaptureImages`
+
+* **Step 2 (Model Training):** To dynamically train the KNN model on existing datasets:
+  `./TrainApp`
+
+* **Step 3 (Real-Time Inference):** To launch the multithreaded recognizer with USB Audio Output:
+  `libcamerify ./MainApp`
+
+
+
+# 🚀 Project Status (Updated: 2026-03-18)
+# social media link:https://www.instagram.com/signspeakglasses/
+
+## 📌 Latest Milestone: Full Scale Data Expansion
+The system has successfully transitioned from a component prototype to a **data-complete** sign language recognition system. All 26 letters of the alphabet are now represented in the local and remote datasets.
 
 ---
 
@@ -19,49 +49,27 @@ The system has successfully evolved from a static component prototype (KNN/HSV) 
 * **🗣️ Interactive Output:** TTS (Text-to-Speech) integrated for real-time voice feedback.
 
 ### ✅ Milestone 3 — 2026-02-24 (Full Dataset Expansion & Repository Recovery)
-* **📚 Dataset Completion:** Successfully expanded from 3 classes to the **full static alphabet (A–Z)**.
-* **🛡️ Version Control Resilience:** Recovered project core following a local environment reset.
-* **🔐 Secure Workflow:** Implemented PAT authentication for secure remote synchronization.
+* **📚 Dataset Completion:** Successfully expanded from 3 classes to the **full alphabet (A–Z)**.
+* **🛡️ Version Control Resilience:** Recovered project core following a local environment reset; synchronized local workspace with the remote GitHub repository.
+* **🔐 Secure Workflow:** Implemented Personal Access Token (PAT) authentication for secure remote synchronization.
 * **📂 Organized Storage:** Standardized directory structure (`/dataset/A-Z/`) for automated model training.
-
-### 🌟 NEW: Milestone 4 — 2026-03-11 (Dynamic Temporal Recognition & Microservice Architecture)
-* **👁️ Deep Learning Vision:** Upgraded from fragile HSV color detection to robust **TFLite Bare-metal Tensor Inference** (21-point hand skeleton tracking).
-* **⏱️ Temporal Engineering:** Engineered a 15-frame sliding window to capture physical movement trajectories. Extracted **7D Feature Vectors** (Instant Velocity `dX/dY` + Normalized Finger Flexion Ratios).
-* **🧠 Machine Learning Engine:** Built a custom data collector and trained a **Random Forest Classifier** achieving ~92% validation accuracy on dynamic gesture trajectories (e.g., *Thank You*, *Hello*).
-* **🛡️ System Hardening:** Diagnosed and bypassed Raspberry Pi's OverlayFS (Read-Only RAM disk limitation) to unlock full 64-bit OS / 64GB storage capabilities for deep learning deployment. Implemented *Absolute Temporal Cooldown* and *Hallucination Filters* to eliminate hardware debounce and return-stroke noise.
 
 ---
 
 ## 📊 Current Capability
-* **Dynamic Word Recognition:** Shifted from recognizing static letters to understanding dynamic, multi-frame physical gestures based on temporal paths.
-* **Environmental Robustness:** Totally immune to background clutter, lighting changes, and skin-tone variations thanks to TFLite skeletal extraction.
-* **Decoupled Performance:** The AI vision pipeline runs independently from the UI/Audio logic (C++), communicating seamlessly via UDP (`Port 5005`).
-* **Instant Extensibility:** New gestures can be added strictly via data-driven workflows (record CSV -> train `.pkl`) without altering core routing logic.
+* **Full Alphabet Ready:** System is prepared for training across all 26 gesture classes.
+* **Data Persistence:** Remote backup of all capture scripts and datasets verified on GitHub.
+* **Stable Infrastructure:** Verified end-to-end compatibility between the capture tool and the embedded filesystem.
 
 
 
 ---
 
 ## 📂 Project Structure
-
 ```text
 .
-│
-├── 🏛️ Legacy C++ Core (Milestone 1-3)
-│   ├── main.cpp, header.h      # Legacy monolithic entry point
-│   ├── CameraManager.cpp/.hpp  # OOP wrapper for libcamera pipeline
-│   ├── GestureRecognizer.cpp   # Legacy HSV/Color-threshold logic
-│   ├── capture_images.cpp      # Multi-threaded image acquisition tool
-│   ├── train.cpp, predict.cpp  # Legacy KNN training & inference logic
-│   └── hand_gesture.cpp        # Static gesture bounding box calculator
-│
-├── 🧪 Testing & Validation
-│   ├── defects_test.cpp        # Unit tests for hardware/pipeline defects
-│   └── SignDatabaseTest.cpp    # Tests for sign mapping storage
-│
-├── ⚙️ Build & Config
-│   ├── CMakeLists.txt          # Unified C++ build configuration (Receiver & Legacy)
-│   └── .gitignore              # Ignores large datasets (/dataset), .pkl, .tflite, and .xml models
-│
-└── README.md                   # Project documentation & logs
-(Note: Large binary models like hand_landmark.tflite, gesture_rf_model.pkl, and the raw image /dataset/ folder are intentionally excluded from version control via .gitignore to maintain repository performance.)
+├── dataset/             # Organized gesture images (A-Z)
+├── capture_images.cpp   # Multi-threaded acquisition tool
+├── train.cpp            # Feature extraction & KNN training logic
+├── knn_model.xml        # Trained model artifact
+└── README.md            # Project documentation & logs

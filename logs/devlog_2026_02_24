@@ -1,0 +1,34 @@
+Here is a concise, professional English version of your development log for GitHub. This is designed to be clear for instructors or collaborators to read.
+
+📝 Development Log | 2026-02-24
+🚀 Summary
+Successfully implemented the full-scale data acquisition pipeline and synchronized the project environment. Despite a local environment reset, all core scripts were recovered, and the gesture dataset was expanded to include the full alphabet.
+
+✅ Key Achievements
+Complete Dataset: Captured image samples for gestures A through Z, organized into the dataset/ directory.
+
+Repository Recovery: Restored legacy project files (main.cpp, etc.) using Git and successfully merged them with new development artifacts.
+
+Secure Synchronization: Configured GitHub PAT (Personal Access Token) for secure, seamless remote updates.
+
+System Stability: Verified that the capture and training scripts are fully compatible with the Raspberry Pi camera and directory structure.
+
+📂 Directory Structure
+Plaintext
+.
+├── dataset/             # Gesture images (A-Z)
+├── capture_images.cpp   # Image acquisition tool
+├── train.cpp            # KNN/HOG training script
+├── knn_model.xml        # Trained model file
+└── README.md            # Project documentation
+🛠 Technical Insights
+Model Selection: Utilizing HOG (Histogram of Oriented Gradients) features and KNN (K-Nearest Neighbors) for lightweight, real-time inference on embedded hardware.
+
+Version Control: Transitioned to an incremental update workflow (git add + git commit) to ensure data persistence and prevent accidental loss.
+
+📅 Next Steps
+Model Training: Run the training script on the expanded 26-class dataset.
+
+Inference: Finalize the real-time prediction script (predict.cpp).
+
+Testing: Evaluate recognition accuracy under different lighting conditions.

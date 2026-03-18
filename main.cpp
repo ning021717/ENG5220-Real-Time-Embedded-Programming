@@ -1,178 +1,155 @@
-/**
- * @file main.cpp
- * @brief Real-time BSL Translator with KNN and Convexity Defects correction.
- */
-
 #include <opencv2/opencv.hpp>
-#include <opencv2/ml.hpp>
 #include <iostream>
-#include <vector>
-#include <string>
-#include <cstdlib>
-#include <algorithm> // For replace()
+#include <thread>
+#include <mutex>
+#include <condition_variable> 
+#include <atomic>
+#include <csignal>
+#include <unistd.h>           
+
+#include "CameraManager.hpp"  
+#include "GestureRecognizer.hpp" // [NEW] Our encapsulated AI engine
+#include "VoiceSynthesizer.hpp" // [NEW] Include our Audio Engine
 
 using namespace cv;
-using namespace cv::ml;
 using namespace std;
 
-// Skin color thresholds (Adjust via Trackbars if necessary)
-int H_MIN = 0, H_MAX = 20;
-int S_MIN = 30, S_MAX = 255;
-int V_MIN = 30, V_MAX = 255;
+// ==========================================
+// IPC & Thread Synchronization Tools
+// ==========================================
+mutex mtx;
+condition_variable cv_frame_ready;
+Mat shared_roi;
+bool frame_ready = false;
+atomic<bool> keep_running(true);
 
-const int IMG_SIZE = 50; 
-string last_spoken_text = ""; 
-int stable_frames = 0;        
+const string WINDOW_CAPTURE = "Sign Language Translator";
+const string WINDOW_MASK = "Binary Mask";
 
-// Function to invoke the TTS engine (espeak) in the background
-void speak(string text) {
-    string safe_text = text;
-    // Replace spaces with underscores to prevent shell command errors
-    replace(safe_text.begin(), safe_text.end(), ' ', '_');
-    string command = "espeak \"" + safe_text + "\" &"; 
-    system(command.c_str()); 
-}
-
-// Map KNN class labels to BSL text
-string getLabelText(float label) {
-    int i = (int)label;
-    if (i == 0) return "Yes";
-    if (i == 1) return "No";
-    if (i == 2) return "Thank you";
-    if (i == 3) return "I love you";
-    return "Unknown";
-}
-
+// Dummy callback for trackbars
 void on_trackbar(int, void*) {}
 
+// ==========================================
+// SIGINT (Ctrl+C) Interceptor with "Double-Tap" Force Quit
+// ==========================================
+void signalHandler(int signum) {
+    static int sig_count = 0;
+    sig_count++;
+    
+    if (sig_count >= 2) {
+        cout << "\n[FATAL] Multiple interrupts detected. Force quitting immediately!" << endl;
+        _exit(1); 
+    }
+    
+    cout << "\n[INTERRUPT] Signal (" << signum << ") received. Shutting down gracefully..." << endl;
+    keep_running = false;            
+    cv_frame_ready.notify_all(); 
+}
+
+// ==========================================
+// EVENT CALLBACK: Triggered by CameraManager
+// ==========================================
+void onFrameCaptured(const cv::Mat& roi) {
+    {
+        lock_guard<mutex> lock(mtx);
+        shared_roi = roi.clone();
+        frame_ready = true;
+    }
+    cv_frame_ready.notify_one(); 
+}
+
 int main() {
-    // 1. Load the trained KNN model
-    Ptr<KNearest> knn = KNearest::load("knn_model.xml");
-    if (knn.empty()) {
-        cerr << "Error: knn_model.xml not found!" << endl;
+    signal(SIGINT, signalHandler);
+
+    // 1. INITIALIZE CAMERA FIRST
+    cout << "[INFO] Initializing Camera Pipeline..." << endl;
+    CameraManager cam(0);
+    if (!cam.init()) {
+        cerr << "[ERROR] Failed to initialize camera. Hardware might be disconnected." << endl;
         return -1;
     }
 
-    // 2. Initialize camera (using V4L2 for Raspberry Pi)
-    VideoCapture cap(0, CAP_V4L2);
-    if (!cap.isOpened()) return -1;
-    cap.set(CAP_PROP_FRAME_WIDTH, 640);
-    cap.set(CAP_PROP_FRAME_HEIGHT, 480);
-
-    namedWindow("BSL Translator", WINDOW_AUTOSIZE);
-    namedWindow("Mask", WINDOW_AUTOSIZE);
+    // 2. INITIALIZE AI ENGINE (Encapsulated OOP)
+    cout << "[INFO] Loading AI Engine..." << endl;
+    GestureRecognizer recognizer("knn_model.xml");
+    if (!recognizer.isModelLoaded()) return -1;
     
-    // Large ROI (Region of Interest) suitable for BSL gestures
-    Rect roiRect(150, 80, 340, 340); 
-    Mat frame, roi, hsv, mask, processingImg;
+    cout << "[INFO] Loading Voice Synthesizer..." << endl;
+    VoiceSynthesizer voice; 
 
-    while (true) {
-        cap >> frame;
-        if (frame.empty()) break;
-        flip(frame, frame, 1); // Mirror effect
-        
-        roi = frame(roiRect);
-        cvtColor(roi, hsv, COLOR_BGR2HSV);
-        inRange(hsv, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), mask);
-        
-        // Morphological operations to remove noise
-        Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
-        erode(mask, mask, kernel);
-        dilate(mask, mask, kernel);
+    // Variables for Anti-Spam Logic
+    string lastSpokenText = "";
+    int framesConfirmed = 0;
+    const int CONFIRMATION_THRESHOLD = 10; // Must see same gesture for 10 frames
+    
+    // 3. CREATE GUI WINDOWS & BIND TRACKBARS TO OBJECT
+    namedWindow(WINDOW_CAPTURE);
+    namedWindow(WINDOW_MASK);
+    createTrackbar("H Min", WINDOW_CAPTURE, &recognizer.H_MIN, 179, on_trackbar);
+    createTrackbar("H Max", WINDOW_CAPTURE, &recognizer.H_MAX, 179, on_trackbar);
+    createTrackbar("S Min", WINDOW_CAPTURE, &recognizer.S_MIN, 255, on_trackbar);
+    createTrackbar("S Max", WINDOW_CAPTURE, &recognizer.S_MAX, 255, on_trackbar);
 
-        string current_text = "No Hand";
-        int finger_gaps = 0;
+    cam.startCapture(onFrameCaptured);
 
-        // 3. Find contours to check hand size and calculate defects
-        vector<vector<Point>> contours;
-        findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    Mat local_roi, mask;
+    cout << "[INFO] Real-Time System Online (Press ESC or Ctrl+C to quit)" << endl;
 
-        if (!contours.empty()) {
-            int max_idx = 0;
-            double max_area = 0;
-            // Find the largest contour (the hand)
-            for(size_t i = 0; i < contours.size(); i++) {
-                double area = contourArea(contours[i]);
-                if(area > max_area) { max_area = area; max_idx = i; }
-            }
-
-            // Only process if a significant hand shape is detected
-            if (max_area > 1500) {
-                
-                // --- A. CONVEXITY DEFECTS LOGIC ---
-                vector<int> hull_ints;
-                convexHull(contours[max_idx], hull_ints, false);
-                vector<Vec4i> defects;
-                
-                if (hull_ints.size() > 3) {
-                    convexityDefects(contours[max_idx], hull_ints, defects);
-                    for (const Vec4i& v : defects) {
-                        float depth = v[3] / 256.0f;
-                        if (depth > 20.0) { // Deep gaps mean extended fingers
-                            finger_gaps++;
-                        }
-                    }
-                }
-
-                // --- B. KNN PREDICTION LOGIC ---
-                mask.copyTo(processingImg);
-                resize(processingImg, processingImg, Size(IMG_SIZE, IMG_SIZE));
-                processingImg = processingImg.reshape(1, 1);
-                processingImg.convertTo(processingImg, CV_32F);
-
-                float result = knn->findNearest(processingImg, 5, noArray());
-                current_text = getLabelText(result);
-
-                // --- C. THE GEEK CORRECTION (Decision Tree) ---
-                // Conflict resolution: Spider-Man gesture vs Fist
-                if (current_text == "Yes" && finger_gaps >= 2) {
-                    current_text = "I love you"; 
-                } else if (current_text == "I love you" && finger_gaps == 0) {
-                    current_text = "Yes";
-                }
-
-                rectangle(frame, roiRect, Scalar(0, 255, 0), 2);
-            } else {
-                rectangle(frame, roiRect, Scalar(0, 0, 255), 2);
-            }
-        } else {
-            rectangle(frame, roiRect, Scalar(0, 0, 255), 2);
+    // ==========================================
+    // CONSUMER THREAD (Event-Driven)
+    // ==========================================
+    while (keep_running) {
+        {
+            unique_lock<mutex> lock(mtx);
+            cv_frame_ready.wait(lock, []{ return frame_ready || !keep_running; });
+            if (!keep_running) break;
+            local_roi = shared_roi.clone();
+            frame_ready = false; 
         }
 
-        // --- 4. TTS Debounce Logic (Prevent repetitive speaking) ---
-        if (current_text != "No Hand" && current_text != "Unknown") {
-            if (current_text == last_spoken_text) {
-                stable_frames = 0; 
+        // --- Core Algorithm ---
+        string text = recognizer.predict(local_roi, mask);
+
+        // --- Anti-Spam & Voice Logic ---
+        if (text != "No Hand" && text != "Error") {
+            if (text == lastSpokenText) {
+                framesConfirmed++;
+                // If the gesture is stable for 10 consecutive frames, speak it!
+                if (framesConfirmed == CONFIRMATION_THRESHOLD) {
+                    voice.speak(text);
+                }
             } else {
-                static string temp_text = "";
-                static int debounce_counter = 0;
-
-                if (current_text != temp_text) {
-                    temp_text = current_text;
-                    debounce_counter = 0;
-                } else {
-                    debounce_counter++;
-                }
-
-                if (debounce_counter > 8) { // Wait for stable gesture
-                    cout << "BSL Detected: " << current_text << " (Gaps: " << finger_gaps << ")" << endl;
-                    speak(current_text);
-                    last_spoken_text = current_text; 
-                    debounce_counter = 0;
-                }
+                // Gesture changed, reset counter
+                lastSpokenText = text;
+                framesConfirmed = 0;
             }
         } else {
-            last_spoken_text = "";
+            // Hand lost, reset counter
+            framesConfirmed = 0;
+            lastSpokenText = "";
         }
 
-        // 5. Draw UI
-        putText(frame, current_text, Point(160, 70), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(255, 0, 0), 3);
-        putText(frame, "Gaps: " + to_string(finger_gaps), Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2);
-        
-        imshow("BSL Translator", frame);
-        imshow("Mask", mask);
+        // --- GUI Rendering ---
+        Mat display_frame = local_roi.clone();
+        if (text != "No Hand" && text != "Error") {
+            putText(display_frame, "Detected: " + text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
+        } else {
+            putText(display_frame, text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+        }
 
-        if (waitKey(30) == 27) break; // ESC to exit
+        imshow(WINDOW_CAPTURE, display_frame);
+        if (!mask.empty()) imshow(WINDOW_MASK, mask);
+
+        char c = (char)waitKey(1);
+        if (c == 27) { // ESC key
+            keep_running = false;
+            cv_frame_ready.notify_all(); 
+            break;
+        }
     }
-    cap.release(); destroyAllWindows(); return 0;
+
+    cam.stop();
+    destroyAllWindows();
+    cout << "[INFO] System shut down successfully." << endl;
+    return 0;
 }

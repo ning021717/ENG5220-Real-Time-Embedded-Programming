@@ -1,0 +1,5 @@
+/home/stlproject/slt_repo/CMakeFiles/CaptureImages.dir
+/home/stlproject/slt_repo/CMakeFiles/MainApp.dir
+/home/stlproject/slt_repo/CMakeFiles/TrainApp.dir
+/home/stlproject/slt_repo/CMakeFiles/edit_cache.dir
+/home/stlproject/slt_repo/CMakeFiles/rebuild_cache.dir
