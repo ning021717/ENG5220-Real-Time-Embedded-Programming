@@ -1,16 +1,30 @@
-## 🛠️ Build and Execution Instructions 
+## 🚀 Build and Run Instructions
 
-### 1. Compilation
-This project uses CMake for cross-platform building and multithreading linkage (`pthread`).
+This project strictly adheres to real-time deterministic design principles, utilizing `libcamera` for video capture, `ALSA`/`espeak` for hardware audio, and multithreading with condition variables for non-blocking I/O.
 
-mkdir build && cd build
+### 1. Prerequisites
+Ensure you have the required dependencies installed on your Raspberry Pi 5:
+
+sudo apt update
+sudo apt install libopencv-dev cmake espeak-ng gpiod libgpiod-dev
+
+### 2. Compilation
+We use `cmake` for build management. To compile the data collector, trainer, and main application:
+
+mkdir -p build && cd build
 cmake ..
-make
+make -j4
 
-### 2. Running the Real-time Application
-We strictly utilize the libcamera pipeline for video capture as advised in the lectures. To run the core real-time recognition engine:
+### 3. Execution Workflow
 
-libcamerify ./MainApp
+* **Step 1 (Data Collection):** To record new binary mask gestures:
+  `libcamerify ./CaptureImages`
+
+* **Step 2 (Model Training):** To dynamically train the KNN model on existing datasets:
+  `./TrainApp`
+
+* **Step 3 (Real-Time Inference):** To launch the multithreaded recognizer with USB Audio Output:
+  `libcamerify ./MainApp`
 
 
 
