@@ -1,26 +1,41 @@
-# 升级版本号以消除 Warning
+# ?????汾???????? Warning
 cmake_minimum_required(VERSION 3.10)
 project(SignLanguageTranslator)
 
-# 寻找 OpenCV 和多线程库
+# SignDatabase.hpp uses C++17 filesystem.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ??? OpenCV ???????
 find_package(OpenCV REQUIRED)
 find_package(Threads REQUIRED)
 
+include(CTest)
+enable_testing()
+
 # ==========================================
-# 1. 采集工具 (用于录制数据集)
+# 1. ??????? (????????????)
 # ==========================================
 add_executable(CaptureImages capture_images.cpp)
 target_link_libraries(CaptureImages ${OpenCV_LIBS} Threads::Threads)
 
 # ==========================================
-# 2. 核心主程序 (用于实时识别展示)
-# 注意：这里必须把 CameraManager.cpp 也加进去一起编译！
+# 2. ?????????? (???????????)
+# ??????????? CameraManager.cpp ???????????
 # ==========================================
 add_executable(MainApp main.cpp CameraManager.cpp GestureRecognizer.cpp VoiceSynthesizer.cpp)
 target_link_libraries(MainApp ${OpenCV_LIBS} Threads::Threads)
 
 # ==========================================
-# 3. 训练工具 (用于生成 knn_model.xml)
+# 3. ??????? (???????? knn_model.xml)
 # ==========================================
 add_executable(TrainApp train.cpp)
 target_link_libraries(TrainApp ${OpenCV_LIBS})
+
+# ==========================================
+# 4. ??????? (???????? Reliability / Testing)
+#    ??????????????? GestureRecognizer（KNN + knn_model.xml）???????????????
+# ==========================================
+add_executable(GestureRecognizerUnitTests GestureRecognizerUnitTests.cpp GestureRecognizer.cpp)
+target_link_libraries(GestureRecognizerUnitTests ${OpenCV_LIBS})
+add_test(NAME GestureRecognizerUnitTests COMMAND GestureRecognizerUnitTests)
