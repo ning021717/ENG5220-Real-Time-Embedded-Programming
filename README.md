@@ -3,28 +3,53 @@
 This project strictly adheres to real-time deterministic design principles, utilizing `libcamera` for video capture, `ALSA`/`espeak` for hardware audio, and multithreading with condition variables for non-blocking I/O.
 
 ### 1. Prerequisites
-Ensure you have the required dependencies installed on your Raspberry Pi 5:
+Ensure you have the required dependencies installed on your Raspberry Pi:
 
+```bash
 sudo apt update
-sudo apt install libopencv-dev cmake espeak-ng gpiod libgpiod-dev
+sudo apt install libopencv-dev cmake espeak-ng libcamera-dev
+```
+
+**Install the libcamera2opencv wrapper** (provides the blocking-I/O callback layer
+that wakes threads on hardware frame events — required by this project):
+
+```bash
+# Clone or copy the libcamera2opencv-1.0 directory, then:
+cd libcamera2opencv-1.0
+cmake .
+make
+sudo make install
+sudo ldconfig
+```
 
 ### 2. Compilation
-We use `cmake` for build management. To compile the data collector, trainer, and main application:
 
+```bash
 mkdir -p build && cd build
 cmake ..
 make -j4
+```
 
 ### 3. Execution Workflow
 
-* **Step 1 (Data Collection):** To record new binary mask gestures:
-  `libcamerify ./CaptureImages`
+* **Step 1 (Data Collection):** Record binary mask gestures for each letter:
+  ```bash
+  cd build && ./CaptureImages
+  ```
 
-* **Step 2 (Model Training):** To dynamically train the KNN model on existing datasets:
-  `./TrainApp`
+* **Step 2 (Model Training):** Train the KNN model on the collected dataset:
+  ```bash
+  ./TrainApp
+  ```
 
-* **Step 3 (Real-Time Inference):** To launch the multithreaded recognizer with USB Audio Output:
-  `libcamerify ./MainApp`
+* **Step 3 (Real-Time Inference):** Launch the multithreaded sign-language pipeline:
+  ```bash
+  ./MainApp
+  ```
+
+> **Note:** `libcamerify` is no longer needed — the project now uses the
+> `libcamera2opencv` library directly, so the binaries talk to libcamera
+> natively without any wrapper script.
 
 
 

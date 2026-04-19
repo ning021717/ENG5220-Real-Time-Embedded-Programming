@@ -62,12 +62,10 @@ int main() {
     signal(SIGINT, signalHandler);
 
     // 1. INITIALIZE CAMERA FIRST
+    // libcamera is initialised inside startCapture() via Libcam2OpenCV::start().
+    // No separate init() call needed — the library validates the camera there.
     cout << "[INFO] Initializing Camera Pipeline..." << endl;
     CameraManager cam(0);
-    if (!cam.init()) {
-        cerr << "[ERROR] Failed to initialize camera. Hardware might be disconnected." << endl;
-        return -1;
-    }
 
     // 2. INITIALIZE AI ENGINE (Encapsulated OOP)
     cout << "[INFO] Loading AI Engine..." << endl;
