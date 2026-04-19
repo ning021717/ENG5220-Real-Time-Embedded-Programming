@@ -10,6 +10,11 @@ inference → espeak-ng TTS.
 
 Social media: <https://www.instagram.com/signspeakglasses/>
 
+Here's our sumulation for simple British sign language translation
+
+[Watch the video] (https://youtube.com/shorts/U6g8pVhTe1o?si=l6YbsBsCTOMWB2KJ))
+
+- More details about the process, progress, and final product demonstrations can be found on social media.
 ---
 
 ## Hardware Requirements
