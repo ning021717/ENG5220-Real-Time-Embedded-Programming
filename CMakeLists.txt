@@ -8,54 +8,65 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter")
 # ==========================================
 # Dependencies
 # ==========================================
-find_package(PkgConfig REQUIRED)
-find_package(OpenCV    REQUIRED)
-find_package(Threads   REQUIRED)
+find_package(PkgConfig)
+find_package(OpenCV  REQUIRED)
+find_package(Threads REQUIRED)
 
-# libcamera (Raspberry Pi camera stack — required for event-driven capture)
-pkg_check_modules(LIBCAMERA REQUIRED IMPORTED_TARGET libcamera)
-message(STATUS "libcamera version : ${LIBCAMERA_VERSION}")
-message(STATUS "libcamera libs    : ${LIBCAMERA_LINK_LIBRARIES}")
+# libcamera and cam2opencv are Raspberry Pi-only — optional so that
+# GestureRecognizerUnitTests can still build on CI (Ubuntu, no libcamera).
+set(HAVE_LIBCAMERA OFF)
+if(PkgConfig_FOUND)
+    pkg_check_modules(LIBCAMERA IMPORTED_TARGET libcamera)
+    if(LIBCAMERA_FOUND)
+        find_library(CAM2OPENCV_LIB NAMES cam2opencv)
+        find_path   (CAM2OPENCV_INC NAMES libcam2opencv.h)
+        if(CAM2OPENCV_LIB AND CAM2OPENCV_INC)
+            set(HAVE_LIBCAMERA ON)
+            message(STATUS "libcamera ${LIBCAMERA_VERSION} + cam2opencv found — building Pi targets")
+        endif()
+    endif()
+endif()
 
-# cam2opencv wrapper (install from libcamera2opencv-1.0:
-#   cmake . && make && sudo make install)
-find_library(CAM2OPENCV_LIB  NAMES cam2opencv REQUIRED)
-find_path   (CAM2OPENCV_INC  NAMES libcam2opencv.h REQUIRED)
-message(STATUS "cam2opencv lib    : ${CAM2OPENCV_LIB}")
-message(STATUS "cam2opencv include: ${CAM2OPENCV_INC}")
+if(NOT HAVE_LIBCAMERA)
+    message(STATUS "libcamera/cam2opencv not found — CaptureImages and MainApp skipped (Raspberry Pi only)")
+endif()
 
 include(CTest)
 enable_testing()
 
 # ==========================================
-# 1. CaptureImages — data collection tool
+# 1. CaptureImages — data collection tool  (Pi only)
 # ==========================================
-add_executable(CaptureImages capture_images.cpp)
-target_include_directories(CaptureImages PRIVATE
-    ${CAM2OPENCV_INC}
-    ${LIBCAMERA_INCLUDE_DIRS})
-target_link_libraries(CaptureImages
-    ${CAM2OPENCV_LIB}
-    PkgConfig::LIBCAMERA
-    ${OpenCV_LIBS}
-    Threads::Threads)
+if(HAVE_LIBCAMERA)
+    add_executable(CaptureImages capture_images.cpp)
+    target_include_directories(CaptureImages PRIVATE
+        ${CAM2OPENCV_INC}
+        ${LIBCAMERA_INCLUDE_DIRS})
+    target_link_libraries(CaptureImages
+        ${CAM2OPENCV_LIB}
+        PkgConfig::LIBCAMERA
+        ${OpenCV_LIBS}
+        Threads::Threads)
+endif()
 
 # ==========================================
-# 2. MainApp — real-time sign-language pipeline
+# 2. MainApp — real-time sign-language pipeline  (Pi only)
 # ==========================================
-add_executable(MainApp
-    main.cpp
-    CameraManager.cpp
-    GestureRecognizer.cpp
-    VoiceSynthesizer.cpp)
-target_include_directories(MainApp PRIVATE
-    ${CAM2OPENCV_INC}
-    ${LIBCAMERA_INCLUDE_DIRS})
-target_link_libraries(MainApp
-    ${CAM2OPENCV_LIB}
-    PkgConfig::LIBCAMERA
-    ${OpenCV_LIBS}
-    Threads::Threads)
+if(HAVE_LIBCAMERA)
+    add_executable(MainApp
+        main.cpp
+        CameraManager.cpp
+        GestureRecognizer.cpp
+        VoiceSynthesizer.cpp)
+    target_include_directories(MainApp PRIVATE
+        ${CAM2OPENCV_INC}
+        ${LIBCAMERA_INCLUDE_DIRS})
+    target_link_libraries(MainApp
+        ${CAM2OPENCV_LIB}
+        PkgConfig::LIBCAMERA
+        ${OpenCV_LIBS}
+        Threads::Threads)
+endif()
 
 # ==========================================
 # 3. TrainApp — offline KNN model training
