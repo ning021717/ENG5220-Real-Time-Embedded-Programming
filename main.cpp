@@ -2,85 +2,109 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
-#include <condition_variable> 
+#include <condition_variable>
 #include <atomic>
-#include <csignal>
-#include <unistd.h>           
+#include <unistd.h>
+#include <signal.h>
+#include <sys/signalfd.h>
 
-#include "CameraManager.hpp"  
-#include "GestureRecognizer.hpp" // [NEW] Our encapsulated AI engine
-#include "VoiceSynthesizer.hpp" // [NEW] Include our Audio Engine
+#include "CameraManager.hpp"
+#include "GestureRecognizer.hpp"
+#include "VoiceSynthesizer.hpp"
 
 using namespace cv;
 using namespace std;
 
 // ==========================================
-// IPC & Thread Synchronization Tools
+// IPC & Thread Synchronisation
 // ==========================================
-mutex mtx;
+mutex              mtx;
 condition_variable cv_frame_ready;
-Mat shared_roi;
-bool frame_ready = false;
-atomic<bool> keep_running(true);
+Mat                shared_roi;
+bool               frame_ready = false;
+atomic<bool>       keep_running(true);
 
 const string WINDOW_CAPTURE = "Sign Language Translator";
-const string WINDOW_MASK = "Binary Mask";
+const string WINDOW_MASK    = "Binary Mask";
 
-// Dummy callback for trackbars
 void on_trackbar(int, void*) {}
 
 // ==========================================
-// SIGINT (Ctrl+C) Interceptor with "Double-Tap" Force Quit
-// ==========================================
-void signalHandler(int signum) {
-    static int sig_count = 0;
-    sig_count++;
-    
-    if (sig_count >= 2) {
-        cout << "\n[FATAL] Multiple interrupts detected. Force quitting immediately!" << endl;
-        _exit(1); 
-    }
-    
-    cout << "\n[INTERRUPT] Signal (" << signum << ") received. Shutting down gracefully..." << endl;
-    keep_running = false;            
-    cv_frame_ready.notify_all(); 
-}
-
-// ==========================================
-// EVENT CALLBACK: Triggered by CameraManager
+// EVENT CALLBACK: called from libcamera event thread
+// The kernel unblocks that thread via blocking I/O on the camera fd;
+// this callback then wakes the consumer (main) thread via condition_variable.
 // ==========================================
 void onFrameCaptured(const cv::Mat& roi) {
     {
         lock_guard<mutex> lock(mtx);
-        shared_roi = roi.clone();
+        shared_roi  = roi.clone();
         frame_ready = true;
     }
-    cv_frame_ready.notify_one(); 
+    cv_frame_ready.notify_one();
 }
 
 int main() {
-    signal(SIGINT, signalHandler);
+    // ==========================================
+    // SIGNAL HANDLING via signalfd (blocking I/O)
+    //
+    // Rather than registering an async-signal-unsafe signal() callback,
+    // we block SIGINT/SIGTERM at the process level and create a file
+    // descriptor (sfd) that becomes readable when one of those signals
+    // arrives. A dedicated thread blocks on read(sfd) — this is the same
+    // "blocking I/O wakes up threads" principle used for the camera.
+    // ==========================================
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTERM);
+    if (sigprocmask(SIG_BLOCK, &mask, nullptr) == -1) {
+        perror("sigprocmask");
+        return -1;
+    }
 
-    // 1. INITIALIZE CAMERA FIRST
-    // libcamera is initialised inside startCapture() via Libcam2OpenCV::start().
-    // No separate init() call needed — the library validates the camera there.
+    int sfd = signalfd(-1, &mask, SFD_CLOEXEC);
+    if (sfd == -1) {
+        perror("signalfd");
+        return -1;
+    }
+
+    // Signal-watcher thread: blocks on read(sfd) until Ctrl-C or SIGTERM.
+    // read() returns only when the kernel delivers a signal — zero polling.
+    thread sigThread([sfd]() {
+        struct signalfd_siginfo fdsi;
+        ssize_t s = read(sfd, &fdsi, sizeof(fdsi));
+        if (s == sizeof(fdsi))
+            cout << "\n[INTERRUPT] Signal " << fdsi.ssi_signo
+                 << " received. Shutting down gracefully..." << endl;
+        keep_running = false;
+        cv_frame_ready.notify_all();
+        close(sfd);
+    });
+    sigThread.detach();
+
+    // ==========================================
+    // 1. CAMERA
+    // ==========================================
     cout << "[INFO] Initializing Camera Pipeline..." << endl;
     CameraManager cam(0);
 
-    // 2. INITIALIZE AI ENGINE (Encapsulated OOP)
+    // ==========================================
+    // 2. AI ENGINE & TTS
+    // ==========================================
     cout << "[INFO] Loading AI Engine..." << endl;
     GestureRecognizer recognizer("knn_model.xml");
     if (!recognizer.isModelLoaded()) return -1;
-    
-    cout << "[INFO] Loading Voice Synthesizer..." << endl;
-    VoiceSynthesizer voice; 
 
-    // Variables for Anti-Spam Logic
+    cout << "[INFO] Loading Voice Synthesizer..." << endl;
+    VoiceSynthesizer voice;
+
     string lastSpokenText = "";
-    int framesConfirmed = 0;
-    const int CONFIRMATION_THRESHOLD = 10; // Must see same gesture for 10 frames
-    
-    // 3. CREATE GUI WINDOWS & BIND TRACKBARS TO OBJECT
+    int    framesConfirmed = 0;
+    const int CONFIRMATION_THRESHOLD = 10;
+
+    // ==========================================
+    // 3. GUI WINDOWS
+    // ==========================================
     namedWindow(WINDOW_CAPTURE);
     namedWindow(WINDOW_MASK);
     createTrackbar("H Min", WINDOW_CAPTURE, &recognizer.H_MIN, 179, on_trackbar);
@@ -89,59 +113,56 @@ int main() {
     createTrackbar("S Max", WINDOW_CAPTURE, &recognizer.S_MAX, 255, on_trackbar);
 
     cam.startCapture(onFrameCaptured);
-
-    Mat local_roi, mask;
     cout << "[INFO] Real-Time System Online (Press ESC or Ctrl+C to quit)" << endl;
 
     // ==========================================
-    // CONSUMER THREAD (Event-Driven)
+    // CONSUMER LOOP (Event-Driven)
+    // Blocks on condition_variable::wait() — woken only by a hardware frame
+    // event from the libcamera callback, never by a timer or busy-poll.
     // ==========================================
+    Mat local_roi, mask;
     while (keep_running) {
         {
             unique_lock<mutex> lock(mtx);
-            cv_frame_ready.wait(lock, []{ return frame_ready || !keep_running; });
+            cv_frame_ready.wait(lock, [] { return frame_ready || !keep_running; });
             if (!keep_running) break;
-            local_roi = shared_roi.clone();
-            frame_ready = false; 
+            local_roi   = shared_roi.clone();
+            frame_ready = false;
         }
 
-        // --- Core Algorithm ---
+        // --- Inference ---
         string text = recognizer.predict(local_roi, mask);
 
-        // --- Anti-Spam & Voice Logic ---
+        // --- Anti-spam debounce: speak only after 10 stable frames ---
         if (text != "No Hand" && text != "Error") {
             if (text == lastSpokenText) {
                 framesConfirmed++;
-                // If the gesture is stable for 10 consecutive frames, speak it!
-                if (framesConfirmed == CONFIRMATION_THRESHOLD) {
+                if (framesConfirmed == CONFIRMATION_THRESHOLD)
                     voice.speak(text);
-                }
             } else {
-                // Gesture changed, reset counter
-                lastSpokenText = text;
+                lastSpokenText  = text;
                 framesConfirmed = 0;
             }
         } else {
-            // Hand lost, reset counter
             framesConfirmed = 0;
-            lastSpokenText = "";
+            lastSpokenText  = "";
         }
 
-        // --- GUI Rendering ---
+        // --- GUI ---
         Mat display_frame = local_roi.clone();
-        if (text != "No Hand" && text != "Error") {
-            putText(display_frame, "Detected: " + text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
-        } else {
-            putText(display_frame, text, Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
-        }
+        if (text != "No Hand" && text != "Error")
+            putText(display_frame, "Detected: " + text,
+                    Point(10, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
+        else
+            putText(display_frame, text,
+                    Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
 
         imshow(WINDOW_CAPTURE, display_frame);
         if (!mask.empty()) imshow(WINDOW_MASK, mask);
 
-        char c = (char)waitKey(1);
-        if (c == 27) { // ESC key
+        if ((char)waitKey(1) == 27) { // ESC
             keep_running = false;
-            cv_frame_ready.notify_all(); 
+            cv_frame_ready.notify_all();
             break;
         }
     }

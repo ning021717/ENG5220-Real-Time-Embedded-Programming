@@ -1,105 +1,186 @@
-## 🚀 Build and Run Instructions
+# SignSpeak Glasses — Real-Time Sign Language Translator
 
-This project strictly adheres to real-time deterministic design principles, utilizing `libcamera` for video capture, `ALSA`/`espeak` for hardware audio, and multithreading with condition variables for non-blocking I/O.
+A real-time embedded system running on Raspberry Pi that recognises American
+Sign Language (ASL) hand gestures (A–Z) from a camera and speaks the detected
+letter aloud via a text-to-speech engine.
 
-### 1. Prerequisites
-Ensure you have the required dependencies installed on your Raspberry Pi:
+**Architecture:** libcamera hardware event → blocking-I/O callback (producer
+thread) → `condition_variable` wakes consumer thread → HSV segmentation + KNN
+inference → espeak-ng TTS.
+
+Social media: <https://www.instagram.com/signspeakglasses/>
+
+---
+
+## Hardware Requirements
+
+- Raspberry Pi 4 / 5 running **Debian Trixie** (64-bit)
+- Raspberry Pi Camera Module v2 (IMX219) connected via CSI ribbon cable
+- USB sound card + speaker (for audio output)
+
+---
+
+## 1. Install System Dependencies
+
+Run the following on your Raspberry Pi (fresh Debian Trixie image):
 
 ```bash
 sudo apt update
-sudo apt install libopencv-dev cmake espeak-ng libcamera-dev
+sudo apt install -y \
+    build-essential \
+    cmake \
+    pkgconf \
+    libopencv-dev \
+    libcamera-dev \
+    espeak-ng
 ```
 
-**Install the libcamera2opencv wrapper** (provides the blocking-I/O callback layer
-that wakes threads on hardware frame events — required by this project):
+> `pkgconf` is required so that CMake can locate libcamera via `pkg-config`.
+
+---
+
+## 2. Build and Install the libcamera2opencv Wrapper
+
+This project uses [libcamera2opencv](https://github.com/berndporr/libcamera2opencv)
+— a thin wrapper that delivers libcamera frames via a C++ virtual-function
+callback, providing the hardware-event-driven, blocking-I/O wakeup pattern
+required by this course.
 
 ```bash
-# Clone or copy the libcamera2opencv-1.0 directory, then:
-cd libcamera2opencv-1.0
+git clone https://github.com/berndporr/libcamera2opencv.git
+cd libcamera2opencv
 cmake .
-make
+make -j4
 sudo make install
 sudo ldconfig
+cd ..
 ```
 
-### 2. Compilation
+---
+
+## 3. Clone This Repository
 
 ```bash
-mkdir -p build && cd build
-cmake ..
-make -j4
+git clone https://github.com/ning021717/ENG5220-Real-Time-Embedded-Programming.git
+cd ENG5220-Real-Time-Embedded-Programming
 ```
 
-### 3. Execution Workflow
+---
 
-* **Step 1 (Data Collection):** Record binary mask gestures for each letter:
-  ```bash
-  cd build && ./CaptureImages
-  ```
+## 4. Build the Project
 
-* **Step 2 (Model Training):** Train the KNN model on the collected dataset:
-  ```bash
-  ./TrainApp
-  ```
+```bash
+mkdir -p build
+cd build
+cmake ..
+make -j4
+cd ..
+```
 
-* **Step 3 (Real-Time Inference):** Launch the multithreaded sign-language pipeline:
-  ```bash
-  ./MainApp
-  ```
-
-> **Note:** `libcamerify` is no longer needed — the project now uses the
-> `libcamera2opencv` library directly, so the binaries talk to libcamera
-> natively without any wrapper script.
-
-
-
-# 🚀 Project Status 
-# social media link: https://www.instagram.com/signspeakglasses/
-
-## 📌 Latest Milestone: Final Real-Time Architecture & OOP Integration
-The system has successfully transitioned from a functional prototype to a **deterministic, industrial-grade real-time embedded system**. The architecture now fully utilizes event-driven multithreading, strict OOP encapsulation, and dedicated hardware audio routing.
+All binaries are placed inside `build/`. Run them **from the project root**
+(where `knn_model.xml` lives) as shown below.
 
 ---
 
-### ✅ Milestone 1 — 2026-02-11 (Hardware & Pipeline Stabilization)
-* **Camera Pipeline:** Functional (Raspberry Pi Camera Module v2 / IMX219, libcamera validated).
-* **Real-time Capture:** Threaded acquisition loop implemented (non-blocking capture).
-* **Gesture Recognition:** Integrated into runtime loop.
+## 5. Run
 
-### ✅ Milestone 2 — 2026-02-18 (Closed-loop CV System Completed)
-* **👁️ Visual Perception:** Camera V2 frame capture + OpenCV preprocessing.
-* **🧠 Core Algorithm:** HSV skin segmentation + KNN classification.
-* **💾 Data Engineering:** Custom data collection tool + initial dataset (A, B, C).
+### Step 1 — Data Collection (optional, dataset already included)
 
-### ✅ Milestone 3 — 2026-02-24 (Full Dataset Expansion & Repository Recovery)
-* **📚 Dataset Completion:** Successfully expanded from 3 classes to the **full alphabet (A–Z)**.
-* **🛡️ Version Control:** Recovered project core and synchronized local workspace with the remote GitHub repository.
+Collect binary-mask training images for a single letter. Run from the project
+root:
 
-### 🔥 Milestone 4 — 2026-03-18 (Final Deterministic RT System)
-* **⚙️ Event-Driven Multithreading:** Implemented strict real-time producer/consumer architecture using `std::condition_variable` and mutexes. Achieved zero polling, zero `sleep()` calls, and 0% idle CPU utilization.
-* **🧩 SOLID OOP Encapsulation:** Decoupled monolithic code into highly cohesive classes (`CameraManager`, `GestureRecognizer`, `VoiceSynthesizer`).
-* **🔊 Hardware Audio Pipeline:** Integrated ALSA and `espeak-ng` routed through a dedicated USB Sound Card and PAM8403 Amplifier for loud, robust TTS feedback.
-* **🛡️ Fault Tolerance & Anti-Spam:** Engineered a self-healing camera loop for physical hardware drops, a POSIX signal interceptor for graceful shutdowns, and a deterministic frame-based state machine to prevent audio spamming.
-* **🎯 CV Pipeline Upgrade:** Upgraded `CaptureImages` to dynamically adjust HSV boundaries and save pure Binary Masks, exponentially increasing KNN inference accuracy.
+```bash
+./build/CaptureImages
+```
+
+Enter the letter (A–Z) when prompted. Adjust the HSV trackbars until the hand
+appears white and the background black, then press `s` to save frames and `q`
+to quit. Images are saved to `dataset/<LETTER>/`.
+
+### Step 2 — Train the KNN Model (optional, model already included)
+
+```bash
+./build/TrainApp
+```
+
+Reads all images under `dataset/` and writes `knn_model.xml` to the project
+root.
+
+### Step 3 — Real-Time Inference
+
+```bash
+./build/MainApp
+```
+
+Shows two windows (live ROI + binary mask). Hold a hand gesture inside the blue
+rectangle; after 10 stable frames the detected letter is spoken aloud. Press
+**ESC** or **Ctrl+C** to exit cleanly.
 
 ---
 
-## 📊 Current Capability
-* **Strict Real-Time Performance:** System processes video streams and triggers hardware audio events flawlessly within real-time deadlines.
-* **High-Fidelity AI Inference:** Dynamic KNN model trained on pristine binary masks for all 26 alphabet classes.
-* **Industrial-Grade Reliability:** Safely handles hardware disconnects and POSIX interrupt signals (Ctrl+C double-tap force quit) without creating zombie processes.
+## 6. Run the Unit Tests
+
+```bash
+cd build
+ctest --output-on-failure -V
+```
+
+The `GestureRecognizerUnitTests` suite runs without camera hardware and is also
+executed automatically by GitHub Actions CI on every push.
 
 ---
 
-## 📂 Project Structure
-```text
+## Project Structure
+
+```
 .
-├── dataset/                   # Organized binary mask gesture images (A-Z)
-├── main.cpp                   # Event-driven consumer thread & GUI
-├── capture_images.cpp         # Multi-threaded binary mask acquisition tool
-├── train.cpp                  # Dynamic feature extraction & KNN training
-├── CameraManager.cpp/.hpp     # Hardware-level libcamera producer thread
-├── GestureRecognizer.cpp/.hpp # Encapsulated HSV/KNN AI engine
-├── VoiceSynthesizer.cpp/.hpp  # ALSA/espeak audio engine thread
-├── knn_model.xml              # Trained AI model artifact
-└── README.md                  # Project documentation & logs
+├── main.cpp                   # Consumer thread, GUI, signalfd shutdown
+├── capture_images.cpp         # libcamera callback → binary-mask collector
+├── train.cpp                  # KNN training from dataset/
+├── CameraManager.cpp/.hpp     # libcam2opencv wrapper, ROI extraction
+├── GestureRecognizer.cpp/.hpp # HSV segmentation + KNN inference
+├── VoiceSynthesizer.cpp/.hpp  # espeak-ng TTS background thread
+├── GestureRecognizerUnitTests.cpp  # Unit tests (CI)
+├── knn_model.xml              # Pre-trained KNN model (A–Z)
+├── CMakeLists.txt
+└── README.md
+```
+
+---
+
+## Design Highlights
+
+| Principle | Implementation |
+|-----------|---------------|
+| Blocking I/O wakes threads | libcamera kernel event → `hasFrame()` callback wakes consumer via `condition_variable` |
+| No polling / no `sleep()` | Producer thread sleeps in libcamera's `poll()`; signal shutdown via `signalfd` + `read()` |
+| C++ virtual-function callbacks | `CameraManager::FrameHandler` inherits `Libcam2OpenCV::Callback`; `VoiceSynthesizer` uses `condition_variable` |
+| OOP encapsulation | `CameraManager`, `GestureRecognizer`, `VoiceSynthesizer` — each owns its thread and state |
+| cmake + CTest | Four targets; CI builds and runs unit tests on every push |
+
+---
+
+## Milestones
+
+### Milestone 1 — 2026-02-11 (Hardware & Pipeline Stabilisation)
+- Raspberry Pi Camera Module v2 (IMX219) validated with libcamera
+- Initial threaded capture and gesture recognition loop
+
+### Milestone 2 — 2026-02-18 (Closed-Loop CV System)
+- HSV skin segmentation + KNN classification integrated end-to-end
+- Custom data-collection tool; initial dataset (A, B, C)
+
+### Milestone 3 — 2026-02-24 (Full Dataset A–Z)
+- Expanded dataset to all 26 letters
+- Repository recovered and synchronised with remote
+
+### Milestone 4 — 2026-04-19 (Final Deterministic RT Architecture)
+- **libcamera** replaces OpenCV V4L2 polling — camera now driven by kernel
+  hardware events via blocking I/O
+- **signalfd** replaces `signal()` — shutdown signal handled via blocking
+  `read()` on a file descriptor, not an async-signal-unsafe callback
+- `CameraManager` refactored to inherit `Libcam2OpenCV::Callback` (virtual
+  function callback pattern)
+- `capture_images.cpp` refactored with same callback + `condition_variable`
+- CMakeLists updated to detect libcamera/cam2opencv; Pi-only targets skipped
+  gracefully in CI
