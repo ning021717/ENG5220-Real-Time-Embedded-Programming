@@ -22,6 +22,15 @@ Here's our sumulation for simple British sign language translation
 - Raspberry Pi 4 / 5 running **Debian Trixie** (64-bit)
 - Raspberry Pi Camera Module v2 (IMX219) connected via CSI ribbon cable
 - USB sound card + speaker (for audio output)
+## Hardware 3D printing
+The custom hardware chassis for this project was built from scratch.
+
+3D Modeling: Autodesk Fusion 360
+
+3D Printer: Bambu Lab P1S
+
+Material: Standard PLA (1.75mm)
+<img width="1470" height="956" alt="截屏2026-04-19 18 22 03" src="https://github.com/user-attachments/assets/62ed1967-e959-4d57-94d7-2a80b05a7fa1" />
 
 ---
 
@@ -150,14 +159,6 @@ executed automatically by GitHub Actions CI on every push.
 ├── CMakeLists.txt
 └── README.md
 ```
-## Hardware Architecture
-To reproduce this project, the following hardware components are required:
-
-* **Raspberry Pi 5**: The core Linux processing unit, providing the necessary computational power for real-time image processing.
-* **Raspberry Pi Camera Module 3 (v3)**: Used for high-fidelity, real-time data acquisition (event-driven frame capture).
-* **External Speaker **: Connects to the Pi to deliver immediate, low-latency audio alerts/feedback.
-* **External Power Supply **: A dedicated 27W USB-C power supply to prevent under-voltage throttling and ensure stable real-time hardware performance.
-<img width="1280" height="1707" alt="image of all hardware" src="https://github.com/user-attachments/assets/b9e780de-1f79-4148-8bcf-6df5c3e25b45" />
 
 
 
