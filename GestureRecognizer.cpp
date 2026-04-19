@@ -26,18 +26,28 @@ std::string GestureRecognizer::predict(const cv::Mat& roi, cv::Mat& outMask) {
         return "Error";
     }
 
-    cv::Mat hsv, processingImg;
+    cv::Mat ycrcb, processingImg;
 
-    // 1. Color Segmentation
-    cv::cvtColor(roi, hsv, cv::COLOR_BGR2HSV);
-    cv::inRange(hsv, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), outMask);
+    // 1. YCrCb Skin Segmentation
+    // YCrCb separates luminance (Y) from chrominance (Cr, Cb), making skin
+    // detection robust to lighting changes — bright or dim light only shifts Y,
+    // while skin Cr/Cb values stay stable across illumination conditions.
+    cv::cvtColor(roi, ycrcb, cv::COLOR_BGR2YCrCb);
+    cv::inRange(ycrcb,
+                cv::Scalar(0,    CR_MIN, CB_MIN),
+                cv::Scalar(255,  CR_MAX, CB_MAX),
+                outMask);
 
-    // 2. Morphological Operations (Noise Reduction)
-    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
-    cv::erode(outMask, outMask, kernel);
-    cv::dilate(outMask, outMask, kernel);
+    // 2. Morphological Closing (dilate → erode) to fill hollow palm regions,
+    //    followed by a second closing with a larger kernel for stubborn gaps.
+    cv::Mat kernel5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+    cv::Mat kernel9 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(9, 9));
+    cv::dilate(outMask, outMask, kernel5);
+    cv::erode(outMask,  outMask, kernel5);
+    cv::dilate(outMask, outMask, kernel9);
+    cv::erode(outMask,  outMask, kernel9);
 
-    // 3. Hand Detection Check (Avoid processing empty backgrounds)
+    // 3. Hand Detection Check
     if (cv::countNonZero(outMask) < 1000) {
         return "No Hand";
     }
@@ -50,6 +60,6 @@ std::string GestureRecognizer::predict(const cv::Mat& roi, cv::Mat& outMask) {
 
     // 5. Machine Learning Prediction
     float result = knn->findNearest(processingImg, 5, cv::noArray());
-    
+
     return getLabelText(result);
 }

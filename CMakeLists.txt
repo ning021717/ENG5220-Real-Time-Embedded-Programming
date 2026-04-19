@@ -12,7 +12,7 @@ find_package(PkgConfig)
 find_package(OpenCV  REQUIRED)
 find_package(Threads REQUIRED)
 
-# libcamera and cam2opencv are Raspberry Pi-only ó optional so that
+# libcamera and cam2opencv are Raspberry Pi-only ù optional so that
 # GestureRecognizerUnitTests can still build on CI (Ubuntu, no libcamera).
 set(HAVE_LIBCAMERA OFF)
 if(PkgConfig_FOUND)
@@ -20,22 +20,23 @@ if(PkgConfig_FOUND)
     if(LIBCAMERA_FOUND)
         find_library(CAM2OPENCV_LIB NAMES cam2opencv)
         find_path   (CAM2OPENCV_INC NAMES libcam2opencv.h)
+        find_library(TURBOJPEG_LIB  NAMES turbojpeg)
         if(CAM2OPENCV_LIB AND CAM2OPENCV_INC)
             set(HAVE_LIBCAMERA ON)
-            message(STATUS "libcamera ${LIBCAMERA_VERSION} + cam2opencv found ó building Pi targets")
+            message(STATUS "libcamera ${LIBCAMERA_VERSION} + cam2opencv found ù building Pi targets")
         endif()
     endif()
 endif()
 
 if(NOT HAVE_LIBCAMERA)
-    message(STATUS "libcamera/cam2opencv not found ó CaptureImages and MainApp skipped (Raspberry Pi only)")
+    message(STATUS "libcamera/cam2opencv not found ù CaptureImages and MainApp skipped (Raspberry Pi only)")
 endif()
 
 include(CTest)
 enable_testing()
 
 # ==========================================
-# 1. CaptureImages ó data collection tool  (Pi only)
+# 1. CaptureImages ù data collection tool  (Pi only)
 # ==========================================
 if(HAVE_LIBCAMERA)
     add_executable(CaptureImages capture_images.cpp)
@@ -44,13 +45,14 @@ if(HAVE_LIBCAMERA)
         ${LIBCAMERA_INCLUDE_DIRS})
     target_link_libraries(CaptureImages
         ${CAM2OPENCV_LIB}
+        ${TURBOJPEG_LIB}
         PkgConfig::LIBCAMERA
         ${OpenCV_LIBS}
         Threads::Threads)
 endif()
 
 # ==========================================
-# 2. MainApp ó real-time sign-language pipeline  (Pi only)
+# 2. MainApp ù real-time sign-language pipeline  (Pi only)
 # ==========================================
 if(HAVE_LIBCAMERA)
     add_executable(MainApp
@@ -63,19 +65,20 @@ if(HAVE_LIBCAMERA)
         ${LIBCAMERA_INCLUDE_DIRS})
     target_link_libraries(MainApp
         ${CAM2OPENCV_LIB}
+        ${TURBOJPEG_LIB}
         PkgConfig::LIBCAMERA
         ${OpenCV_LIBS}
         Threads::Threads)
 endif()
 
 # ==========================================
-# 3. TrainApp ó offline KNN model training
+# 3. TrainApp ù offline KNN model training
 # ==========================================
 add_executable(TrainApp train.cpp)
 target_link_libraries(TrainApp ${OpenCV_LIBS})
 
 # ==========================================
-# 4. GestureRecognizerUnitTests ó CI-compatible unit tests
+# 4. GestureRecognizerUnitTests ù CI-compatible unit tests
 # ==========================================
 add_executable(GestureRecognizerUnitTests
     GestureRecognizerUnitTests.cpp

@@ -17,13 +17,13 @@ public:
     // Core function: Takes the ROI, returns the predicted text and outputs the binary mask
     std::string predict(const cv::Mat& roi, cv::Mat& outMask);
 
-    // Public variables for GUI Trackbar bindings
-    int H_MIN = 0;
-    int H_MAX = 20;
-    int S_MIN = 30;
-    int S_MAX = 255;
-    int V_MIN = 30;
-    int V_MAX = 255;
+    // Public variables for GUI Trackbar bindings (YCrCb skin segmentation)
+    // Y: luminance (ignored for skin), Cr: red-diff, Cb: blue-diff
+    // Typical skin range under varied lighting: Cr [133,173], Cb [77,127]
+    int CR_MIN = 133;
+    int CR_MAX = 173;
+    int CB_MIN = 77;
+    int CB_MAX = 127;
 
 private:
     cv::Ptr<cv::ml::KNearest> knn; // Encapsulated Machine Learning Engine

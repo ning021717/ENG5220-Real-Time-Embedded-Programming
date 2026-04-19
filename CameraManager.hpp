@@ -14,7 +14,6 @@
  */
 class CameraManager {
 public:
-    // Callback type: receives the ROI-cropped frame
     using FrameCallback = std::function<void(const cv::Mat&)>;
 
     explicit CameraManager(int index = 0);
@@ -30,23 +29,11 @@ public:
     void stop();
 
 private:
-    /**
-     * Inner callback adapter. Inherits the pure-virtual Libcam2OpenCV::Callback
-     * interface so that libcamera's requestComplete signal dispatches directly
-     * into our handler — a textbook C++ virtual-function callback pattern.
-     */
-    struct FrameHandler : public Libcam2OpenCV::Callback {
-        CameraManager* parent;
-        explicit FrameHandler(CameraManager* p) : parent(p) {}
-        void hasFrame(const cv::Mat& frame,
-                      const libcamera::ControlList& metadata) override;
-    };
-
-    Libcam2OpenCV camera;
-    FrameHandler  handler;
-    FrameCallback userCallback;
-    int           cameraIndex;
-    cv::Rect      roiRect;
+    Libcam2OpenCV            camera;
+    libcamera::CameraManager cm;       // required by this version of libcam2opencv
+    FrameCallback            userCallback;
+    int                      cameraIndex;
+    cv::Rect                 roiRect;
 };
 
 #endif // CAMERA_MANAGER_HPP

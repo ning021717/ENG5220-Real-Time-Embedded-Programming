@@ -20,32 +20,10 @@ condition_variable frame_cv;
 bool             frame_ready  = false;
 atomic<bool>     keep_running(true);
 
-int H_MIN = 0,  H_MAX = 20;
-int S_MIN = 30, S_MAX = 255;
-int V_MIN = 30, V_MAX = 255;
+int CR_MIN = 133, CR_MAX = 173;
+int CB_MIN = 77,  CB_MAX = 127;
 
 void on_trackbar(int, void*) {}
-
-// ==========================================
-// Libcamera callback — called from the libcamera event thread.
-// The kernel wakes that thread via blocking I/O (poll on the camera fd)
-// whenever a new frame has been DMA-transferred from the sensor. This is
-// NOT a polling loop: the OS itself drives execution here.
-// ==========================================
-struct CaptureCallback : public Libcam2OpenCV::Callback {
-    void hasFrame(const cv::Mat& frame,
-                  const libcamera::ControlList&) override {
-        {
-            lock_guard<mutex> lock(frame_mutex);
-            shared_frame = frame.clone();
-            frame_ready  = true;
-        }
-        // Wake the GUI thread that is blocked on condition_variable::wait().
-        // This is the "blocking I/O wakes up threads" pattern: the GUI thread
-        // sleeps until here, and here is reached only on a hardware event.
-        frame_cv.notify_one();
-    }
-};
 
 // ==========================================
 // Main / GUI thread — blocks on condition_variable until libcamera delivers
@@ -60,26 +38,40 @@ int main() {
     string folder = "dataset/" + label;
     system(("mkdir -p " + folder).c_str());
 
-    CaptureCallback    captureCallback;
-    Libcam2OpenCV      camera;
-    camera.registerCallback(&captureCallback);
+    Libcam2OpenCV camera;
+
+    // Lambda callback registered as OnFrame (std::function).
+    // The kernel wakes the libcamera thread via blocking I/O (poll on camera fd)
+    // whenever a new frame has been DMA-transferred from the sensor — no polling.
+    camera.registerCallback([](const cv::Mat& frame,
+                               const libcamera::ControlList&) {
+        {
+            lock_guard<mutex> lock(frame_mutex);
+            shared_frame = frame.clone();
+            frame_ready  = true;
+        }
+        frame_cv.notify_one();
+    });
 
     Libcam2OpenCVSettings settings;
     settings.width     = 640;
     settings.height    = 480;
     settings.framerate = 30;
-    camera.start(settings);
+
+    libcamera::CameraManager cm;
+    cm.start();
+    camera.start(cm, settings);
 
     namedWindow("Raw Camera",                 WINDOW_AUTOSIZE);
     namedWindow("Binary Mask (Data to Save)", WINDOW_AUTOSIZE);
-    createTrackbar("H Min", "Binary Mask (Data to Save)", &H_MIN, 179, on_trackbar);
-    createTrackbar("H Max", "Binary Mask (Data to Save)", &H_MAX, 179, on_trackbar);
-    createTrackbar("S Min", "Binary Mask (Data to Save)", &S_MIN, 255, on_trackbar);
-    createTrackbar("S Max", "Binary Mask (Data to Save)", &S_MAX, 255, on_trackbar);
+    createTrackbar("Cr Min", "Binary Mask (Data to Save)", &CR_MIN, 255, on_trackbar);
+    createTrackbar("Cr Max", "Binary Mask (Data to Save)", &CR_MAX, 255, on_trackbar);
+    createTrackbar("Cb Min", "Binary Mask (Data to Save)", &CB_MIN, 255, on_trackbar);
+    createTrackbar("Cb Max", "Binary Mask (Data to Save)", &CB_MAX, 255, on_trackbar);
 
     int count = 0;
     cv::Rect guideRect(100, 50, 440, 380);
-    Mat frame, hsv, mask;
+    Mat frame, ycrcb, mask;
 
     cout << "[Target]  : " << label << endl;
     cout << "[Controls]: Adjust trackbars until background is black, hand is white." << endl;
@@ -102,15 +94,18 @@ int main() {
         else
             roi = frame.clone();
 
-        cvtColor(roi, hsv, COLOR_BGR2HSV);
-        inRange(hsv,
-                Scalar(H_MIN, S_MIN, V_MIN),
-                Scalar(H_MAX, S_MAX, V_MAX),
+        cvtColor(roi, ycrcb, COLOR_BGR2YCrCb);
+        inRange(ycrcb,
+                Scalar(0,      CR_MIN, CB_MIN),
+                Scalar(255,    CR_MAX, CB_MAX),
                 mask);
 
-        Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
-        erode(mask,  mask, kernel);
-        dilate(mask, mask, kernel);
+        Mat kernel5 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
+        Mat kernel9 = getStructuringElement(MORPH_ELLIPSE, Size(9, 9));
+        dilate(mask, mask, kernel5);
+        erode(mask,  mask, kernel5);
+        dilate(mask, mask, kernel9);
+        erode(mask,  mask, kernel9);
 
         cv::rectangle(frame, guideRect, cv::Scalar(0, 255, 255), 2);
         imshow("Raw Camera",                 frame);
@@ -129,6 +124,7 @@ int main() {
     }
 
     camera.stop();
+    cm.stop();
     destroyAllWindows();
     return 0;
 }

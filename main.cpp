@@ -53,16 +53,16 @@ int main() {
     // arrives. A dedicated thread blocks on read(sfd) — this is the same
     // "blocking I/O wakes up threads" principle used for the camera.
     // ==========================================
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGTERM);
-    if (sigprocmask(SIG_BLOCK, &mask, nullptr) == -1) {
+    sigset_t sig_mask;
+    sigemptyset(&sig_mask);
+    sigaddset(&sig_mask, SIGINT);
+    sigaddset(&sig_mask, SIGTERM);
+    if (sigprocmask(SIG_BLOCK, &sig_mask, nullptr) == -1) {
         perror("sigprocmask");
         return -1;
     }
 
-    int sfd = signalfd(-1, &mask, SFD_CLOEXEC);
+    int sfd = signalfd(-1, &sig_mask, SFD_CLOEXEC);
     if (sfd == -1) {
         perror("signalfd");
         return -1;
@@ -107,10 +107,10 @@ int main() {
     // ==========================================
     namedWindow(WINDOW_CAPTURE);
     namedWindow(WINDOW_MASK);
-    createTrackbar("H Min", WINDOW_CAPTURE, &recognizer.H_MIN, 179, on_trackbar);
-    createTrackbar("H Max", WINDOW_CAPTURE, &recognizer.H_MAX, 179, on_trackbar);
-    createTrackbar("S Min", WINDOW_CAPTURE, &recognizer.S_MIN, 255, on_trackbar);
-    createTrackbar("S Max", WINDOW_CAPTURE, &recognizer.S_MAX, 255, on_trackbar);
+    createTrackbar("Cr Min", WINDOW_CAPTURE, &recognizer.CR_MIN, 255, on_trackbar);
+    createTrackbar("Cr Max", WINDOW_CAPTURE, &recognizer.CR_MAX, 255, on_trackbar);
+    createTrackbar("Cb Min", WINDOW_CAPTURE, &recognizer.CB_MIN, 255, on_trackbar);
+    createTrackbar("Cb Max", WINDOW_CAPTURE, &recognizer.CB_MAX, 255, on_trackbar);
 
     cam.startCapture(onFrameCaptured);
     cout << "[INFO] Real-Time System Online (Press ESC or Ctrl+C to quit)" << endl;
