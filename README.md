@@ -145,8 +145,16 @@ executed automatically by GitHub Actions CI on every push.
 ├── CMakeLists.txt
 └── README.md
 ```
+## Hardware Architecture
+To reproduce this project, the following hardware components are required:
 
----
+* **Raspberry Pi 5**: The core Linux processing unit, providing the necessary computational power for real-time image processing.
+* **Raspberry Pi Camera Module 3 (v3)**: Used for high-fidelity, real-time data acquisition (event-driven frame capture).
+* **External Speaker **: Connects to the Pi to deliver immediate, low-latency audio alerts/feedback.
+* **External Power Supply **: A dedicated 27W USB-C power supply to prevent under-voltage throttling and ensure stable real-time hardware performance.
+<img width="1280" height="1707" alt="image of all hardware" src="https://github.com/user-attachments/assets/b9e780de-1f79-4148-8bcf-6df5c3e25b45" />
+
+
 
 ## Design Highlights
 
