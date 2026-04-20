@@ -1,8 +1,9 @@
 #include "libcam2opencv.h"
 #include <opencv2/opencv.hpp>
+#include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <string>
-#include <sys/stat.h>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
@@ -36,7 +37,7 @@ int main() {
     for (auto& c : label) c = toupper(c);
 
     string folder = "dataset/" + label;
-    system(("mkdir -p " + folder).c_str());
+    std::filesystem::create_directories(folder);
 
     Libcam2OpenCV camera;
 
@@ -113,8 +114,27 @@ int main() {
 
         char key = (char)waitKey(1);
         if (key == 's') {
+            // Save the bounding-box-normalised mask so training data is
+            // position- and scale-invariant from the start — consistent with
+            // the normalisation applied in train.cpp and GestureRecognizer.
+            Mat toSave = mask;
+            std::vector<std::vector<cv::Point>> ctrs;
+            cv::findContours(mask, ctrs, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            if (!ctrs.empty()) {
+                auto maxIt = std::max_element(ctrs.begin(), ctrs.end(),
+                    [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b){
+                        return cv::contourArea(a) < cv::contourArea(b);
+                    });
+                cv::Rect bbox = cv::boundingRect(*maxIt);
+                const int pad = 4;
+                bbox.x      = std::max(0, bbox.x - pad);
+                bbox.y      = std::max(0, bbox.y - pad);
+                bbox.width  = std::min(mask.cols - bbox.x, bbox.width  + 2 * pad);
+                bbox.height = std::min(mask.rows - bbox.y, bbox.height + 2 * pad);
+                toSave = mask(bbox).clone();
+            }
             string filename = folder + "/" + to_string(count) + ".jpg";
-            imwrite(filename, mask);
+            imwrite(filename, toSave);
             cout << "[SAVED] " << filename << endl;
             count++;
         } else if (key == 'q' || key == 27) {

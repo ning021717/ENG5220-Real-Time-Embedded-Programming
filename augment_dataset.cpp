@@ -168,9 +168,10 @@ int main(int argc, char* argv[]) {
 
         Mat aug = augment(base, rng);
 
-        // Save at the same resolution as the source image.
-        // train.cpp handles the resize to 50x50 during feature extraction,
-        // so augmented images must match the original captured size.
+        // Save at the same resolution as the source image (already bbox-cropped
+        // by capture_images.cpp).  train.cpp applies bounding-box normalisation
+        // before the 50×50 resize, so augmented images are handled correctly
+        // even after perspective/rotation shifts the blob within the frame.
         std::string outPath = folder + "/" + std::to_string(existing + count) + ".jpg";
         imwrite(outPath, aug);
         count++;

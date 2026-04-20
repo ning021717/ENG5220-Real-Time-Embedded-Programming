@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/ml.hpp>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -32,6 +33,28 @@ bool load_images(string directory, int label, Mat& trainData, vector<int>& train
         Mat img = imread(filenames[i], IMREAD_GRAYSCALE); 
         
         if (img.empty()) continue;
+
+        // Bounding-box normalisation: mirror the same transform applied at
+        // inference time in GestureRecognizer::predict(). Without this step
+        // the 50×50 feature vector encodes pixel position within the full ROI,
+        // so KNN classifies by where the hand appears on screen rather than
+        // by hand shape. Cropping to the largest blob's bounding box first
+        // makes training features position- and scale-invariant.
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(img, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        if (!contours.empty()) {
+            auto maxIt = std::max_element(contours.begin(), contours.end(),
+                [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
+                    return cv::contourArea(a) < cv::contourArea(b);
+                });
+            cv::Rect bbox = cv::boundingRect(*maxIt);
+            const int pad = 4;
+            bbox.x      = std::max(0, bbox.x - pad);
+            bbox.y      = std::max(0, bbox.y - pad);
+            bbox.width  = std::min(img.cols - bbox.x, bbox.width  + 2 * pad);
+            bbox.height = std::min(img.rows - bbox.y, bbox.height + 2 * pad);
+            img = img(bbox).clone();
+        }
 
         resize(img, img, Size(IMG_SIZE, IMG_SIZE));
         img = img.reshape(1, 1); 

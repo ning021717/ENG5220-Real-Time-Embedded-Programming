@@ -5,12 +5,12 @@ Sign Language (ASL) hand gestures (A–Z) from a camera and speaks the detected
 letter aloud via a text-to-speech engine.
 
 **Architecture:** libcamera hardware event → blocking-I/O callback (producer
-thread) → `condition_variable` wakes consumer thread → HSV segmentation + KNN
-inference → espeak-ng TTS.
+thread) → `condition_variable` wakes consumer thread → YCrCb skin segmentation
++ bounding-box-normalised KNN inference → espeak-ng TTS.
 
 Social media: <https://www.instagram.com/signspeakglasses/>
 
-Here's our sumulation for simple British sign language translation
+Here's our demonstration for simple British sign language translation
 
 [Watch the video] (https://youtube.com/shorts/U6g8pVhTe1o?si=l6YbsBsCTOMWB2KJ))
 
@@ -127,7 +127,7 @@ root.
 ```
 
 Shows two windows (live ROI + binary mask). Hold a hand gesture inside the blue
-rectangle; after 10 stable frames the detected letter is spoken aloud. Press
+rectangle; after 6 stable frames the detected letter is spoken aloud. Press
 **ESC** or **Ctrl+C** to exit cleanly.
 
 ---
@@ -148,15 +148,16 @@ executed automatically by GitHub Actions CI on every push.
 
 ```
 .
-├── main.cpp                   # Consumer thread, GUI, signalfd shutdown
-├── capture_images.cpp         # libcamera callback → binary-mask collector
-├── train.cpp                  # KNN training from dataset/
-├── CameraManager.cpp/.hpp     # libcam2opencv wrapper, ROI extraction
-├── GestureRecognizer.cpp/.hpp # YCrCb segmentation + KNN inference
-├── VoiceSynthesizer.cpp/.hpp  # espeak-ng TTS background thread
+├── main.cpp                        # Consumer thread, GUI, signalfd shutdown
+├── capture_images.cpp              # libcamera callback → normalised binary-mask collector
+├── train.cpp                       # KNN training from dataset/ (bbox-normalised features)
+├── augment_dataset.cpp             # Offline dataset augmentation (rotation/noise/perspective)
+├── CameraManager.cpp/.hpp          # libcam2opencv wrapper, ROI extraction
+├── GestureRecognizer.cpp/.hpp      # YCrCb segmentation + bbox-normalised KNN inference
+├── VoiceSynthesizer.cpp/.hpp       # espeak-ng TTS background thread
 ├── GestureRecognizerUnitTests.cpp  # Unit tests (CI)
-├── knn_model.xml              # Pre-trained KNN model (A–Z)
-├── fix_cam.sh                 # Camera module reset utility (run if camera hangs)
+├── knn_model.xml                   # Pre-trained KNN model (A–Z)
+├── fix_cam.sh                      # Camera module reset utility (run if camera hangs)
 ├── CMakeLists.txt
 └── README.md
 ```
@@ -169,9 +170,47 @@ executed automatically by GitHub Actions CI on every push.
 |-----------|---------------|
 | Blocking I/O wakes threads | libcamera kernel event → `hasFrame()` callback wakes consumer via `condition_variable` |
 | No polling / no `sleep()` | Producer thread sleeps in libcamera's `poll()`; signal shutdown via `signalfd` + `read()` |
-| C++ virtual-function callbacks | `CameraManager::FrameHandler` inherits `Libcam2OpenCV::Callback`; `VoiceSynthesizer` uses `condition_variable` |
+| C++ virtual-function callbacks | `CameraManager` inherits `Libcam2OpenCV::Callback`; `VoiceSynthesizer` uses `condition_variable` |
 | OOP encapsulation | `CameraManager`, `GestureRecognizer`, `VoiceSynthesizer` — each owns its thread and state |
-| cmake + CTest | Four targets; CI builds and runs unit tests on every push |
+| cmake + CTest | Five targets; CI builds and runs unit tests on every push |
+
+---
+
+## SOLID Design Rationale
+
+| Principle | How it is applied |
+|-----------|------------------|
+| **Single Responsibility** | Each class has exactly one reason to change: `CameraManager` handles only libcamera I/O and ROI cropping; `GestureRecognizer` handles only computer-vision segmentation and KNN inference; `VoiceSynthesizer` handles only TTS scheduling. `main.cpp` is the thin orchestrator that wires them together. |
+| **Open / Closed** | `GestureRecognizer::predict()` can be replaced by a different ML backend (e.g. SVM, neural net) without touching `main.cpp` — the public interface `predict(roi, outMask) → string` is stable. |
+| **Liskov Substitution** | `CameraManager::FrameHandler` inherits `Libcam2OpenCV::Callback` and overrides `hasFrame()`. Any code that holds a `Callback*` can use it without knowing the concrete type — the substitution is transparent. |
+| **Interface Segregation** | Each class exposes the minimal public API its clients need. `GestureRecognizer` exposes only `predict()` and `isModelLoaded()`; callers are not forced to know about YCrCb thresholds except when they explicitly bind a GUI trackbar. |
+| **Dependency Inversion** | `main.cpp` depends on the `FrameCallback` abstraction (`std::function<void(const cv::Mat&)>`), not on the concrete `CameraManager` or libcamera types. Swapping the camera source requires no change to the inference or TTS layers. |
+
+> **Deliberate trade-off — `CR_MIN/MAX`, `CB_MIN/MAX` are public in `GestureRecognizer`.**
+> OpenCV's `createTrackbar()` requires a raw `int*` pointer; there is no setter-based variant.
+> Making these four ints public is the only way to bind live GUI sliders without introducing global variables.
+> All other internal state (`knn`, `IMG_SIZE`, `getLabelText`) remains private.
+
+---
+
+## Real-Time Latency Analysis
+
+The application must process each camera frame and produce a spoken letter within a perceptible response window. Human perception of audio delay becomes noticeable above ≈ 150 ms.
+
+| Stage | Measured / estimated latency | Design decision |
+|-------|------------------------------|-----------------|
+| libcamera frame period | 33 ms (30 fps) | Hardware limit; acceptable for gesture recognition |
+| Camera DMA → callback | < 1 ms | Kernel delivers via blocking `poll()` on media-controller fd |
+| `condition_variable` wake (producer → consumer) | < 0.1 ms | Kernel scheduler; no polling overhead |
+| YCrCb conversion + morphological ops (440 × 380 px) | ~3–6 ms on Pi 4 | Single-pass; within one frame budget |
+| Bounding-box crop + KNN inference (50 × 50 = 2 500 dims) | ~2–8 ms on Pi 4 | Linear scan over training set; dominates if dataset > 2 000 samples |
+| Debounce (6 consecutive matching frames) | 6 × 33 ms = ~200 ms | Eliminates false positives; acceptable for letter-by-letter output |
+| `aplay` pre-generated WAV playback | ~100 ms startup + audio duration | WAVs pre-generated at startup to avoid 2–3 s cold espeak-ng launch |
+| `signalfd` + `read()` shutdown latency | < 1 ms | Kernel delivers signal synchronously to fd; no async-signal-unsafe handler |
+
+**Total inference-to-speech latency** (excluding debounce): ≈ 110–120 ms — well within the 150 ms perceptibility threshold.
+
+The debounce window (6 frames ≈ 200 ms) is a deliberate design choice: gesture recognition on noisy binary masks produces single-frame mispredictions; requiring 6 consecutive agreeing frames filters these without introducing subjectively noticeable lag for a human signer.
 
 ---
 

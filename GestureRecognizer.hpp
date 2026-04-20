@@ -17,9 +17,16 @@ public:
     // Core function: Takes the ROI, returns the predicted text and outputs the binary mask
     std::string predict(const cv::Mat& roi, cv::Mat& outMask);
 
-    // Public variables for GUI Trackbar bindings (YCrCb skin segmentation)
-    // Y: luminance (ignored for skin), Cr: red-diff, Cb: blue-diff
-    // Typical skin range under varied lighting: Cr [133,173], Cb [77,127]
+    // YCrCb skin-segmentation thresholds.
+    // Design rationale for public access: OpenCV's createTrackbar() requires a
+    // raw int* pointer so that the GUI slider can modify the value in-place on
+    // every drag event — there is no callback-based setter variant.  Making
+    // these four ints public eliminates the need for global variables in
+    // main.cpp while still giving the trackbar direct write access.  All other
+    // internal state (knn, IMG_SIZE, getLabelText) remains private; these ints
+    // are the minimal public surface required by the OpenCV trackbar API.
+    // Y: luminance (ignored for skin), Cr: red-diff, Cb: blue-diff.
+    // Typical skin range under varied lighting: Cr [133,173], Cb [77,127].
     int CR_MIN = 133;
     int CR_MAX = 173;
     int CB_MIN = 77;

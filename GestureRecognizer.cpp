@@ -52,13 +52,38 @@ std::string GestureRecognizer::predict(const cv::Mat& roi, cv::Mat& outMask) {
         return "No Hand";
     }
 
-    // 4. Feature Extraction & Formatting
-    outMask.copyTo(processingImg);
+    // 4. Bounding-Box Normalisation
+    // Resizing the full ROI directly makes the feature vector position- and
+    // scale-dependent: the same hand shape placed in the top-left corner
+    // produces a completely different 50×50 pixel vector than when placed in
+    // the centre, causing KNN to classify by screen position rather than hand
+    // shape. Cropping to the tight bounding box of the largest skin blob before
+    // resize makes features invariant to both hand position and hand size
+    // within the ROI, so classification reflects hand geometry alone.
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(outMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    if (contours.empty()) return "No Hand";
+
+    auto maxIt = std::max_element(contours.begin(), contours.end(),
+        [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
+            return cv::contourArea(a) < cv::contourArea(b);
+        });
+    cv::Rect bbox = cv::boundingRect(*maxIt);
+
+    // Small padding so fingertips at the bbox edge are not clipped.
+    const int pad = 4;
+    bbox.x      = std::max(0, bbox.x - pad);
+    bbox.y      = std::max(0, bbox.y - pad);
+    bbox.width  = std::min(outMask.cols - bbox.x, bbox.width  + 2 * pad);
+    bbox.height = std::min(outMask.rows - bbox.y, bbox.height + 2 * pad);
+
+    // 5. Feature Extraction & Formatting
+    processingImg = outMask(bbox).clone();
     cv::resize(processingImg, processingImg, cv::Size(IMG_SIZE, IMG_SIZE));
     processingImg = processingImg.reshape(1, 1);
     processingImg.convertTo(processingImg, CV_32F);
 
-    // 5. Machine Learning Prediction with confidence check.
+    // 6. Machine Learning Prediction with confidence check.
     // neighborResponses holds each of the k=5 neighbours' class votes.
     // Confidence = fraction of neighbours that agree with the top prediction.
     // Only return a label when confidence >= 80 %; otherwise return "Uncertain"

@@ -133,7 +133,7 @@ int main() {
         // --- Inference ---
         string text = recognizer.predict(local_roi, mask);
 
-        // --- Anti-spam debounce: speak only after 10 stable frames ---
+        // --- Anti-spam debounce: speak only after CONFIRMATION_THRESHOLD stable frames ---
         if (text != "No Hand" && text != "Error" && text != "Uncertain") {
             if (text == lastSpokenText) {
                 framesConfirmed++;
