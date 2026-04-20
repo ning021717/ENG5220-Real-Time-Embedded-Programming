@@ -24,5 +24,5 @@ sleep 1
 
 echo "========================================"
 echo " ✅ Camera Module Successfully Reset! "
-echo " You may now run: libcamerify ./MainApp "
+echo " You may now run: ./build/MainApp      "
 echo "========================================"

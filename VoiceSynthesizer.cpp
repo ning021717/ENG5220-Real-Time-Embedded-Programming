@@ -40,7 +40,11 @@ void VoiceSynthesizer::workerThread() {
             hasNewText = false;
         }
 
-        // Synthesize voice using ALSA / espeak to the default USB audio device
+        // Synthesize voice using espeak-ng via the default ALSA audio device.
+        // system() blocks this worker thread for the duration of speech — that
+        // is intentional: TTS output has a natural duration and this dedicated
+        // thread is the only one that stalls.  The camera and inference threads
+        // continue unaffected, preserving end-to-end RT deadlines.
         std::cout << "[VOICE] Speaking: " << localText << std::endl;
         std::string speakCmd = "espeak-ng -v en -s 140 -a 200 \"" + localText + "\" > /dev/null 2>&1";
         int ret = system(speakCmd.c_str());

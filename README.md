@@ -152,10 +152,11 @@ executed automatically by GitHub Actions CI on every push.
 ├── capture_images.cpp         # libcamera callback → binary-mask collector
 ├── train.cpp                  # KNN training from dataset/
 ├── CameraManager.cpp/.hpp     # libcam2opencv wrapper, ROI extraction
-├── GestureRecognizer.cpp/.hpp # HSV segmentation + KNN inference
+├── GestureRecognizer.cpp/.hpp # YCrCb segmentation + KNN inference
 ├── VoiceSynthesizer.cpp/.hpp  # espeak-ng TTS background thread
 ├── GestureRecognizerUnitTests.cpp  # Unit tests (CI)
 ├── knn_model.xml              # Pre-trained KNN model (A–Z)
+├── fix_cam.sh                 # Camera module reset utility (run if camera hangs)
 ├── CMakeLists.txt
 └── README.md
 ```
