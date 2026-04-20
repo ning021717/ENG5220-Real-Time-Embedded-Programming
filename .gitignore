@@ -47,3 +47,6 @@ TrainModel
 
 # Training dataset images (binary masks) — model file is committed instead
 dataset/
+
+# KNN model (large binary, regenerated locally by TrainApp)
+knn_model.xml
