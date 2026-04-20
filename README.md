@@ -12,9 +12,9 @@ TTS.
 
 Social media: <https://www.instagram.com/signspeakglasses/>
 
-Here's our demonstration for simple British sign language translation
+Short demonstration of the live pipeline:
 
-[Watch the video](https://youtube.com/shorts/Hi0u0ZBQyyE?feature=share))
+[Watch the video](https://youtube.com/shorts/Hi0u0ZBQyyE?feature=share)
 
 - More details about the process, progress, and final product demonstrations can be found on social media.
 ### 👥 Team & Division of Labour
@@ -24,7 +24,7 @@ Here's our demonstration for simple British sign language translation
 | Team Member | Core Role | Specific Tasks & Contributions |
 | :--- | :--- | :--- |
 | **JINF XING** | C++ Software Architect | Implementation of SOLID principles, OOP class structure design, failsafe memory management |
-| **NING LIU** | Computer Vision Engineer | Camera v3 interfacing, OpenCV real-time frame acquisition, image processing algorithms |
+| **NING LIU** | Computer Vision Engineer | Raspberry Pi Camera (CSI / libcamera) interfacing, OpenCV real-time frame acquisition, image processing algorithms |
 | **ZHENDONG GU** | Lead Hardware Designer | 3D CAD modeling, 3D printing, physical enclosure assembly, thermal stress testing |
 </details>
 ---
@@ -276,13 +276,10 @@ End-to-end perception latency (excluding debounce) stays on the order of **one f
 
 ---
 
-## Course submission checklist (ENG5220)
+## Acknowledgements
 
-Complete these on Moodle / GitHub **before the deadline** (see course PDF and forum):
+Real-time camera capture is built on **[libcamera2opencv](https://github.com/berndporr/libcamera2opencv)** by [Bernd Porr](https://github.com/berndporr) — the libcamera → OpenCV callback wrapper used in this course. We are grateful for this library and the ENG5220 teaching materials that describe the event-driven, blocking-I/O pattern it enables.
 
-- [ ] **Declaration of originality** (+ acknowledge genAI if used) — Moodle assignment linked from the *Submission* announcement.
-- [ ] **GitHub Release** tagged for the marked snapshot (markers may clone the release or a specific time on `main`).
-- [ ] **Team wiki** on Moodle: working repo link and member responsibilities.
-- [ ] **Dry-run build** on a **fresh Debian Trixie** SD card using sections 1–4 above (markers will follow your README).
+---
 
 License: see `LICENSE` (MIT).

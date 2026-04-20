@@ -13,8 +13,9 @@ namespace {
     // Probe a list of candidate paths and return the first that exists.
     std::string findFile(const std::vector<std::string>& names) {
         const fs::path cwd = fs::current_path();
+        const fs::path searchRoots[] = {cwd, cwd / "..", cwd / "../.."};
         for (const auto& name : names) {
-            for (const fs::path base : {cwd, cwd / "..", cwd / "../.."}) {
+            for (const fs::path& base : searchRoots) {
                 fs::path p = base / name;
                 if (fs::exists(p)) return p.string();
             }
