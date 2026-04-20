@@ -14,10 +14,19 @@ Social media: <https://www.instagram.com/signspeakglasses/>
 
 Here's our demonstration for simple British sign language translation
 
-[Watch the video](https://youtube.com/shorts/U6g8pVhTe1o?si=l6YbsBsCTOMWB2KJ)
+[Watch the video](https://youtube.com/shorts/Hi0u0ZBQyyE?feature=share))
 
 - More details about the process, progress, and final product demonstrations can be found on social media.
+### 👥 Team & Division of Labour
+<details>
+<summary><b>Click to view detailed team roles</b></summary>
 
+| Team Member | Core Role | Specific Tasks & Contributions |
+| :--- | :--- | :--- |
+| **JINF XING** | C++ Software Architect | Implementation of SOLID principles, OOP class structure design, failsafe memory management |
+| **NING LIU** | Computer Vision Engineer | Camera v3 interfacing, OpenCV real-time frame acquisition, image processing algorithms |
+| **ZHENDONG GU** | Lead Hardware Designer | 3D CAD modeling, 3D printing, physical enclosure assembly, thermal stress testing |
+</details>
 ---
 
 ## Hardware Requirements
