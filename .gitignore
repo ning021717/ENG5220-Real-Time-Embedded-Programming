@@ -44,3 +44,6 @@ TrainModel
 # Deprecated ML Models
 *.pkl
 *.tflite
+
+# Training dataset images (binary masks) — model file is committed instead
+dataset/
