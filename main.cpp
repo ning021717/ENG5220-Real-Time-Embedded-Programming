@@ -1,4 +1,5 @@
 #include <opencv2/opencv.hpp>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -91,9 +92,16 @@ int main() {
     // ==========================================
     // 2. AI ENGINE & TTS
     // ==========================================
-    cout << "[INFO] Loading AI Engine..." << endl;
-    GestureRecognizer recognizer("knn_model.xml");
+    // Prefer the CNN ONNX model when present — it is position/scale invariant
+    // and significantly more accurate than raw-pixel KNN.  Fall back to KNN if
+    // gesture_cnn.onnx has not been placed in the project root.
+    const string cnnPath = "gesture_cnn.onnx";
+    const string knnPath = "knn_model.xml";
+    const string modelPath = std::filesystem::exists(cnnPath) ? cnnPath : knnPath;
+    cout << "[INFO] Loading AI Engine (" << modelPath << ")..." << endl;
+    GestureRecognizer recognizer(modelPath);
     if (!recognizer.isModelLoaded()) return -1;
+    cout << "[INFO] Backend: " << recognizer.backendName() << endl;
 
     cout << "[INFO] Loading Voice Synthesizer..." << endl;
     VoiceSynthesizer voice;
