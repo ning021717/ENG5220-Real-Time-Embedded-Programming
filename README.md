@@ -6,15 +6,18 @@ letter aloud via a text-to-speech engine.
 
 **Architecture:** libcamera hardware event → blocking-I/O callback (producer
 thread) → `condition_variable` wakes consumer thread → YCrCb skin segmentation
-+ bounding-box-normalised KNN inference → espeak-ng TTS.
+→ bounding-box-normalised inference (**TinyCNN via ONNX / OpenCV DNN** when
+`gesture_cnn.onnx` is present, otherwise **KNN** from `knn_model.xml`) → espeak-ng
+TTS.
 
 Social media: <https://www.instagram.com/signspeakglasses/>
 
 Here's our demonstration for simple British sign language translation
 
-[Watch the video] (https://youtube.com/shorts/U6g8pVhTe1o?si=l6YbsBsCTOMWB2KJ))
+[Watch the video](https://youtube.com/shorts/U6g8pVhTe1o?si=l6YbsBsCTOMWB2KJ)
 
 - More details about the process, progress, and final product demonstrations can be found on social media.
+
 ---
 
 ## Hardware Requirements
@@ -22,7 +25,9 @@ Here's our demonstration for simple British sign language translation
 - Raspberry Pi 4 / 5 running **Debian Trixie** (64-bit)
 - Raspberry Pi Camera Module v2 (IMX219) connected via CSI ribbon cable
 - USB sound card + speaker (for audio output)
+
 ## Hardware 3D printing
+
 The custom hardware chassis for this project was built from scratch.
 
 3D Modeling: Autodesk Fusion 360
@@ -30,7 +35,8 @@ The custom hardware chassis for this project was built from scratch.
 3D Printer: Bambu Lab P1S
 
 Material: Standard PLA (1.75mm)
-<img width="1470" height="956" alt="截屏2026-04-19 18 22 03" src="https://github.com/user-attachments/assets/62ed1967-e959-4d57-94d7-2a80b05a7fa1" />
+
+<img width="1470" height="956" alt="3D printed chassis" src="https://github.com/user-attachments/assets/62ed1967-e959-4d57-94d7-2a80b05a7fa1" />
 
 ---
 
@@ -46,10 +52,12 @@ sudo apt install -y \
     pkgconf \
     libopencv-dev \
     libcamera-dev \
-    espeak-ng
+    espeak-ng \
+    alsa-utils
 ```
 
 > `pkgconf` is required so that CMake can locate libcamera via `pkg-config`.
+> `alsa-utils` provides `aplay` for WAV playback (USB audio).
 
 ---
 
@@ -91,150 +99,181 @@ make -j4
 cd ..
 ```
 
-All binaries are placed inside `build/`. Run them **from the project root**
-(where `knn_model.xml` lives) as shown below.
+All binaries are placed inside `build/`. **Run them from the project root**
+so that `gesture_cnn.onnx` and/or `knn_model.xml` are found on the default path.
 
 ---
 
-## 5. Run
+## 5. Models (inference)
 
-### Step 1 — Data Collection (optional, dataset already included)
+| File | Role |
+|------|------|
+| `gesture_cnn.onnx` | **Preferred.** Tiny CNN (OpenCV `dnn`), shipped in the repo. |
+| `knn_model.xml` | **Fallback** if ONNX is absent. Generate locally with `TrainApp` after collecting data under `dataset/`. |
 
-Collect binary-mask training images for a single letter. Run from the project
-root:
+`MainApp` chooses `gesture_cnn.onnx` when it exists; otherwise it loads `knn_model.xml`.
+
+Training images under `dataset/` are **not** version-controlled (too large). The
+KNN XML is also omitted from git; use the ONNX model for a one-step clone-and-run
+experience.
+
+---
+
+## 6. Run
+
+### Step 1 — Data collection (optional)
+
+Only needed if you want to **retrain** KNN or expand letters yourself.
 
 ```bash
 ./build/CaptureImages
 ```
 
-Enter the letter (A–Z) when prompted. Adjust the HSV trackbars until the hand
-appears white and the background black, then press `s` to save frames and `q`
-to quit. Images are saved to `dataset/<LETTER>/`.
+Enter the letter (A–Z) when prompted. Adjust the **YCrCb** trackbars (**Cr Min/Max**,
+**Cb Min/Max**) until the hand appears white and the background black, then press
+`s` to save frames and `q` to quit. Images are saved to `dataset/<LETTER>/`.
 
-### Step 2 — Train the KNN Model (optional, model already included)
+### Step 2 — Train KNN (optional)
+
+Requires a populated `dataset/` tree.
 
 ```bash
 ./build/TrainApp
 ```
 
-Reads all images under `dataset/` and writes `knn_model.xml` to the project
-root.
+Writes `knn_model.xml` to the project root. Use this path if you cannot use the
+default ONNX model.
 
-### Step 3 — Real-Time Inference
+### Step 3 — Real-time inference
 
 ```bash
 ./build/MainApp
 ```
 
-Shows two windows (live ROI + binary mask). Hold a hand gesture inside the blue
-rectangle; after 6 stable frames the detected letter is spoken aloud. Press
-**ESC** or **Ctrl+C** to exit cleanly.
+Shows two windows (live ROI + binary mask). The main window title includes the
+active backend (`CNN` or `KNN`). Hold a hand gesture inside the blue rectangle;
+after **6** stable frames the detected letter is spoken aloud. Press **ESC** or
+**Ctrl+C** to exit cleanly.
+
+### Audio device (USB sound card)
+
+Playback uses `aplay` with ALSA device `plughw:2,0` by default. If your USB card
+uses another index, set before launch:
+
+```bash
+export SLT_ALSA_DEVICE="plughw:1,0"
+./build/MainApp
+```
 
 ---
 
-## 6. Run the Unit Tests
+## 7. Run the Unit Tests
 
 ```bash
 cd build
 ctest --output-on-failure -V
 ```
 
-The `GestureRecognizerUnitTests` suite runs without camera hardware and is also
-executed automatically by GitHub Actions CI on every push.
+`GestureRecognizerUnitTests` runs **without** a camera. If `gesture_cnn.onnx` is
+in the repository root, CI exercises the CNN path; if you add `knn_model.xml`
+locally, the KNN path is tested too. At least one model file must be present or
+the test executable reports failure (so empty checkouts are caught).
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 .
 ├── main.cpp                        # Consumer thread, GUI, signalfd shutdown
 ├── capture_images.cpp              # libcamera callback → normalised binary-mask collector
 ├── train.cpp                       # KNN training from dataset/ (bbox-normalised features)
-├── augment_dataset.cpp             # Offline dataset augmentation (rotation/noise/perspective)
+├── augment_dataset.cpp             # Offline dataset augmentation (C++)
 ├── CameraManager.cpp/.hpp          # libcam2opencv wrapper, ROI extraction
-├── GestureRecognizer.cpp/.hpp      # YCrCb segmentation + bbox-normalised KNN inference
-├── VoiceSynthesizer.cpp/.hpp       # espeak-ng TTS background thread
+├── GestureRecognizer.cpp/.hpp      # YCrCb segmentation + KNN or ONNX-CNN inference
+├── VoiceSynthesizer.cpp/.hpp       # espeak-ng / aplay TTS background thread
 ├── GestureRecognizerUnitTests.cpp  # Unit tests (CI)
-├── knn_model.xml                   # Pre-trained KNN model (A–Z)
-├── fix_cam.sh                      # Camera module reset utility (run if camera hangs)
+├── gesture_cnn.onnx                # Default TinyCNN weights (OpenCV DNN)
+├── knn_model.xml                   # Optional; generate with TrainApp (not in git)
+├── fix_cam.sh                      # Camera reset helper (run if the sensor hangs)
 ├── CMakeLists.txt
+├── LICENSE
 └── README.md
 ```
 
+---
 
-
-## Design Highlights
+## Design highlights
 
 | Principle | Implementation |
-|-----------|---------------|
-| Blocking I/O wakes threads | libcamera kernel event → `hasFrame()` callback wakes consumer via `condition_variable` |
-| No polling / no `sleep()` | Producer thread sleeps in libcamera's `poll()`; signal shutdown via `signalfd` + `read()` |
+|-----------|-----------------|
+| Blocking I/O wakes threads | libcamera kernel event → callback wakes consumer via `condition_variable` |
+| No polling / no `sleep()` | Producer blocks in libcamera's `poll()`; shutdown via `signalfd` + `read()` |
 | C++ virtual-function callbacks | `CameraManager` inherits `Libcam2OpenCV::Callback`; `VoiceSynthesizer` uses `condition_variable` |
-| OOP encapsulation | `CameraManager`, `GestureRecognizer`, `VoiceSynthesizer` — each owns its thread and state |
-| cmake + CTest | Five targets; CI builds and runs unit tests on every push |
+| OOP encapsulation | `CameraManager`, `GestureRecognizer`, `VoiceSynthesizer` — each owns its state |
+| cmake + CTest | Multiple targets; CI builds and runs unit tests on every push |
 
 ---
 
-## SOLID Design Rationale
+## SOLID design rationale
 
 | Principle | How it is applied |
 |-----------|------------------|
-| **Single Responsibility** | Each class has exactly one reason to change: `CameraManager` handles only libcamera I/O and ROI cropping; `GestureRecognizer` handles only computer-vision segmentation and KNN inference; `VoiceSynthesizer` handles only TTS scheduling. `main.cpp` is the thin orchestrator that wires them together. |
-| **Open / Closed** | `GestureRecognizer::predict()` can be replaced by a different ML backend (e.g. SVM, neural net) without touching `main.cpp` — the public interface `predict(roi, outMask) → string` is stable. |
-| **Liskov Substitution** | `CameraManager::FrameHandler` inherits `Libcam2OpenCV::Callback` and overrides `hasFrame()`. Any code that holds a `Callback*` can use it without knowing the concrete type — the substitution is transparent. |
-| **Interface Segregation** | Each class exposes the minimal public API its clients need. `GestureRecognizer` exposes only `predict()` and `isModelLoaded()`; callers are not forced to know about YCrCb thresholds except when they explicitly bind a GUI trackbar. |
-| **Dependency Inversion** | `main.cpp` depends on the `FrameCallback` abstraction (`std::function<void(const cv::Mat&)>`), not on the concrete `CameraManager` or libcamera types. Swapping the camera source requires no change to the inference or TTS layers. |
+| **Single Responsibility** | Each class has one reason to change: `CameraManager` — libcamera I/O and ROI; `GestureRecognizer` — segmentation and ML inference; `VoiceSynthesizer` — TTS. `main.cpp` only wires components. |
+| **Open / Closed** | `GestureRecognizer::predict(roi, outMask)` is stable; backends (KNN XML vs ONNX) are selected by filename without changing callers. |
+| **Liskov Substitution** | `CameraManager` implements `Libcam2OpenCV::Callback`; frames are delivered through the base interface. |
+| **Interface Segregation** | Minimal public APIs; trackbar-bound YCrCb thresholds are the only extra surface for GUI tuning. |
+| **Dependency Inversion** | `main` depends on a model path string and `FrameCallback`, not on libcamera internals. |
 
-> **Deliberate trade-off — `CR_MIN/MAX`, `CB_MIN/MAX` are public in `GestureRecognizer`.**
-> OpenCV's `createTrackbar()` requires a raw `int*` pointer; there is no setter-based variant.
-> Making these four ints public is the only way to bind live GUI sliders without introducing global variables.
-> All other internal state (`knn`, `IMG_SIZE`, `getLabelText`) remains private.
+> **Trade-off:** `CR_MIN/MAX`, `CB_MIN/MAX` are public because OpenCV `createTrackbar()` requires `int*`. Internal state (`knn`, `cnnNet`, `IMG_SIZE`) stays private.
 
 ---
 
-## Real-Time Latency Analysis
+## Real-time latency analysis
 
-The application must process each camera frame and produce a spoken letter within a perceptible response window. Human perception of audio delay becomes noticeable above ≈ 150 ms.
+| Stage | Estimated latency (Pi 4 class) | Notes |
+|-------|-------------------------------|--------|
+| libcamera frame period | 33 ms @ 30 fps | Hardware bound |
+| DMA → user callback | < 1 ms | Blocking `poll()` |
+| `condition_variable` wake | < 0.1 ms | No busy-wait |
+| YCrCb + morphology (~440×380) | ~3–6 ms | Shared by both backends |
+| **CNN** forward (50×50, ONNX) | ~4–10 ms | Fixed cost; `opencv_dnn` CPU backend |
+| **KNN** `findNearest` | ~2–8 ms + O(N samples) | Grows with training set size |
+| Debounce (6 frames) | ~200 ms | Suppresses single-frame errors |
+| `aplay` pre-generated WAV | ~100 ms + audio | Avoids cold `espeak-ng` per letter |
 
-| Stage | Measured / estimated latency | Design decision |
-|-------|------------------------------|-----------------|
-| libcamera frame period | 33 ms (30 fps) | Hardware limit; acceptable for gesture recognition |
-| Camera DMA → callback | < 1 ms | Kernel delivers via blocking `poll()` on media-controller fd |
-| `condition_variable` wake (producer → consumer) | < 0.1 ms | Kernel scheduler; no polling overhead |
-| YCrCb conversion + morphological ops (440 × 380 px) | ~3–6 ms on Pi 4 | Single-pass; within one frame budget |
-| Bounding-box crop + KNN inference (50 × 50 = 2 500 dims) | ~2–8 ms on Pi 4 | Linear scan over training set; dominates if dataset > 2 000 samples |
-| Debounce (6 consecutive matching frames) | 6 × 33 ms = ~200 ms | Eliminates false positives; acceptable for letter-by-letter output |
-| `aplay` pre-generated WAV playback | ~100 ms startup + audio duration | WAVs pre-generated at startup to avoid 2–3 s cold espeak-ng launch |
-| `signalfd` + `read()` shutdown latency | < 1 ms | Kernel delivers signal synchronously to fd; no async-signal-unsafe handler |
-
-**Total inference-to-speech latency** (excluding debounce): ≈ 110–120 ms — well within the 150 ms perceptibility threshold.
-
-The debounce window (6 frames ≈ 200 ms) is a deliberate design choice: gesture recognition on noisy binary masks produces single-frame mispredictions; requiring 6 consecutive agreeing frames filters these without introducing subjectively noticeable lag for a human signer.
+End-to-end perception latency (excluding debounce) stays on the order of **one frame** for vision + inference — suitable for interactive signing.
 
 ---
 
 ## Milestones
 
-### Milestone 1 — 2026-02-11 (Hardware & Pipeline Stabilisation)
-- Raspberry Pi Camera Module v2 (IMX219) validated with libcamera
-- Initial threaded capture and gesture recognition loop
+### Milestone 1 — 2026-02-11 (Hardware & pipeline)
+- Camera Module v2 validated with libcamera
+- Initial threaded capture and gesture loop
 
-### Milestone 2 — 2026-02-18 (Closed-Loop CV System)
-- HSV skin segmentation + KNN classification integrated end-to-end
-- Custom data-collection tool; initial dataset (A, B, C)
+### Milestone 2 — 2026-02-18 (Closed-loop CV)
+- Skin segmentation (evolved to YCrCb) + KNN end-to-end
+- Data-collection tool; initial letters
 
-### Milestone 3 — 2026-02-24 (Full Dataset A–Z)
-- Expanded dataset to all 26 letters
-- Repository recovered and synchronised with remote
+### Milestone 3 — 2026-02-24 (Dataset growth)
+- Expanded toward full A–Z coverage
+- Repository synchronised with remote
 
-### Milestone 4 — 2026-04-19 (Final Deterministic RT Architecture)
-- **libcamera** replaces OpenCV V4L2 polling — camera now driven by kernel
-  hardware events via blocking I/O
-- **signalfd** replaces `signal()` — shutdown signal handled via blocking
-  `read()` on a file descriptor, not an async-signal-unsafe callback
-- `CameraManager` refactored to inherit `Libcam2OpenCV::Callback` (virtual
-  function callback pattern)
-- `capture_images.cpp` refactored with same callback + `condition_variable`
-- CMakeLists updated to detect libcamera/cam2opencv; Pi-only targets skipped
-  gracefully in CI
+### Milestone 4 — 2026-04-19 (Deterministic RT architecture)
+- libcamera + blocking I/O; `signalfd` shutdown
+- `CameraManager` as `Libcam2OpenCV::Callback`
+- Optional ONNX CNN path for improved accuracy
+
+---
+
+## Course submission checklist (ENG5220)
+
+Complete these on Moodle / GitHub **before the deadline** (see course PDF and forum):
+
+- [ ] **Declaration of originality** (+ acknowledge genAI if used) — Moodle assignment linked from the *Submission* announcement.
+- [ ] **GitHub Release** tagged for the marked snapshot (markers may clone the release or a specific time on `main`).
+- [ ] **Team wiki** on Moodle: working repo link and member responsibilities.
+- [ ] **Dry-run build** on a **fresh Debian Trixie** SD card using sections 1–4 above (markers will follow your README).
+
+License: see `LICENSE` (MIT).

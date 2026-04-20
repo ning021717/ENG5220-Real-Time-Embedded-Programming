@@ -25,8 +25,7 @@ Mat                shared_roi;
 bool               frame_ready = false;
 atomic<bool>       keep_running(true);
 
-const string WINDOW_CAPTURE = "Sign Language Translator";
-const string WINDOW_MASK    = "Binary Mask";
+const string WINDOW_MASK = "Binary Mask";
 
 void on_trackbar(int, void*) {}
 
@@ -113,12 +112,14 @@ int main() {
     // ==========================================
     // 3. GUI WINDOWS
     // ==========================================
-    namedWindow(WINDOW_CAPTURE);
+    const string windowCapture =
+        string("Sign Language Translator [") + recognizer.backendName() + "]";
+    namedWindow(windowCapture);
     namedWindow(WINDOW_MASK);
-    createTrackbar("Cr Min", WINDOW_CAPTURE, &recognizer.CR_MIN, 255, on_trackbar);
-    createTrackbar("Cr Max", WINDOW_CAPTURE, &recognizer.CR_MAX, 255, on_trackbar);
-    createTrackbar("Cb Min", WINDOW_CAPTURE, &recognizer.CB_MIN, 255, on_trackbar);
-    createTrackbar("Cb Max", WINDOW_CAPTURE, &recognizer.CB_MAX, 255, on_trackbar);
+    createTrackbar("Cr Min", windowCapture, &recognizer.CR_MIN, 255, on_trackbar);
+    createTrackbar("Cr Max", windowCapture, &recognizer.CR_MAX, 255, on_trackbar);
+    createTrackbar("Cb Min", windowCapture, &recognizer.CB_MIN, 255, on_trackbar);
+    createTrackbar("Cb Max", windowCapture, &recognizer.CB_MAX, 255, on_trackbar);
 
     cam.startCapture(onFrameCaptured);
     cout << "[INFO] Real-Time System Online (Press ESC or Ctrl+C to quit)" << endl;
@@ -168,7 +169,7 @@ int main() {
             putText(display_frame, text,
                     Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
 
-        imshow(WINDOW_CAPTURE, display_frame);
+        imshow(windowCapture, display_frame);
         if (!mask.empty()) imshow(WINDOW_MASK, mask);
 
         if ((char)waitKey(1) == 27) { // ESC

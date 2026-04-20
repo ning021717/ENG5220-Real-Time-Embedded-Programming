@@ -1,7 +1,18 @@
 #include "VoiceSynthesizer.hpp"
 #include <iostream>
 #include <cstdlib>
+#include <cstring>
+#include <string>
 #include <unistd.h>
+
+namespace {
+    /** ALSA device for aplay. Override with env SLT_ALSA_DEVICE (e.g. plughw:1,0). */
+    std::string alsaPlaybackDevice() {
+        const char* env = std::getenv("SLT_ALSA_DEVICE");
+        if (env && std::strlen(env) > 0) return std::string(env);
+        return "plughw:2,0";
+    }
+} // namespace
 
 VoiceSynthesizer::VoiceSynthesizer() 
     : hasNewText(false), keepRunning(true) {
@@ -58,7 +69,8 @@ void VoiceSynthesizer::workerThread() {
             // Pre-generated WAV exists — aplay starts in ~100ms vs espeak-ng ~2-3s.
             // Route explicitly to the USB sound card (plughw:2,0) so aplay doesn't
             // fall back to the HDMI output (card 0).
-            cmd = "aplay -q -D plughw:2,0 " + wavPath + " > /dev/null 2>&1";
+            cmd = "aplay -q -D " + alsaPlaybackDevice() + " " + wavPath
+                  + " > /dev/null 2>&1";
         } else {
             cmd = "espeak-ng -v en -s 130 -a 200 \"" + localText + "\" > /dev/null 2>&1";
         }
