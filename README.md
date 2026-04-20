@@ -4,8 +4,34 @@ A real-time embedded system running on Raspberry Pi that recognises American
 Sign Language (ASL) hand gestures (A–Z) from a camera and speaks the detected
 letter aloud via a text-to-speech engine.
 
+## 📸 Physical Prototype & System Integration
 
----
+**[General Design Vision]**
+The SignSpeak Glasses prototype is the result of rigorous hardware-software co-design. It leverages a custom 3D-printed chassis to transform a Raspberry Pi-based system into a functional, wearable assistive device designed for real-time sign language recognition.
+
+<div align="center">
+  <table border="0">
+    <tr>
+      <td align="center" width="50%" style="border: none;">
+        <div style="box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 12px; overflow: hidden; margin: 10px;">
+          <img src="13.jpg" width="100%" alt="Hardware Infrastructure"/>
+        </div>
+        <br/>
+        <b>[Specific] System Components</b><br/>
+        <small>Featuring the Raspberry Pi core, a high-capacity power module, and an integrated audio diffusion system.</small>
+      </td>
+      <td align="center" width="50%" style="border: none;">
+        <div style="box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 12px; overflow: hidden; margin: 10px;">
+          <img src="12.jpg" width="100%" alt="Wearing Demo"/>
+        </div>
+        <br/>
+        <b>[Specific] Ergonomic Form Factor</b><br/>
+        <small>Demonstrating the head-mounted interface designed to align the camera with the user's natural field of view.</small>
+      </td>
+    </tr>
+  </table>
+</div>
+
 
 **Architecture:** libcamera hardware event → blocking-I/O callback (producer
 thread) → `condition_variable` wakes consumer thread → YCrCb skin segmentation
