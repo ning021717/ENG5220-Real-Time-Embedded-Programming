@@ -4,24 +4,6 @@ A real-time embedded system running on Raspberry Pi that recognises American
 Sign Language (ASL) hand gestures (A–Z) from a camera and speaks the detected
 letter aloud via a text-to-speech engine.
 
-## 📸 Hardware Prototype
-
-We have developed a wearable prototype that integrates the computing power of a Raspberry Pi with a custom 3D-printed frame.
-
-<table align="center">
-  <tr>
-    <td align="center">
-      <img src="06920341a3920559b4d37aa2000224a.jpg" width="400px" alt="Hardware Setup"/><br/>
-      <b>System Components</b><br/>
-      (Power bank, RPi, and Speakers)
-    </td>
-    <td align="center">
-      <img src="656423dad8dcf87392bffc75b341a61.jpg" width="400px" alt="Wearing Demo"/><br/>
-      <b>Wearing Demonstration</b><br/>
-      (Ergonomic Head-mounted Design)
-    </td>
-  </tr>
-</table>
 
 ---
 
