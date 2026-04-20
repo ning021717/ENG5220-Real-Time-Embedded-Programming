@@ -1,3 +1,6 @@
+# Cursor IDE local config (not for version control)
+.cursor/
+
 # Ignore the temporary folder generated during compilation
 cmake-build-debug/
 build/
