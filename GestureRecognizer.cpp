@@ -58,8 +58,28 @@ std::string GestureRecognizer::predict(const cv::Mat& roi, cv::Mat& outMask) {
     processingImg = processingImg.reshape(1, 1);
     processingImg.convertTo(processingImg, CV_32F);
 
-    // 5. Machine Learning Prediction
-    float result = knn->findNearest(processingImg, 5, cv::noArray());
+    // 5. Machine Learning Prediction with confidence check.
+    // neighborResponses holds each of the k=5 neighbours' class votes.
+    // Confidence = fraction of neighbours that agree with the top prediction.
+    // Only return a label when confidence >= 80 %; otherwise return "Uncertain"
+    // so the caller skips voice output.
+    cv::Mat neighborResponses, dists;
+    float result = knn->findNearest(processingImg, 9, cv::noArray(),
+                                    neighborResponses, dists);
+
+    // Vote-based confidence: fraction of k neighbours that agree
+    int votes = 0;
+    for (int i = 0; i < neighborResponses.cols; i++)
+        if (neighborResponses.at<float>(0, i) == result) votes++;
+    float confidence = static_cast<float>(votes) / neighborResponses.cols;
+
+    // Distance-based check: if even the nearest neighbour is too far away,
+    // the input doesn't resemble any training sample — reject it.
+    // dists stores squared L2 distances; threshold ~1e7 is empirical for 50x50 masks.
+    float minDist = dists.at<float>(0, 0);
+
+    if (confidence < 0.8f || minDist > 1.5e7f)
+        return "Uncertain";
 
     return getLabelText(result);
 }

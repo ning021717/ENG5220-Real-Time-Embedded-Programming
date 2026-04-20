@@ -1,11 +1,22 @@
 #include "VoiceSynthesizer.hpp"
 #include <iostream>
 #include <cstdlib>
+#include <unistd.h>
 
 VoiceSynthesizer::VoiceSynthesizer() 
     : hasNewText(false), keepRunning(true) {
     
-    std::cout << "[INFO] Initializing Audio Engine (USB Sound Card)..." << std::endl;
+    std::cout << "[INFO] Pre-generating audio files (A-Z)..." << std::endl;
+    // Generate WAV files once at startup so playback uses aplay (fast)
+    // instead of cold-starting espeak-ng on every letter (~2-3s overhead).
+    for (char c = 'A'; c <= 'Z'; c++) {
+        std::string letter(1, c);
+        std::string path = "/tmp/slt_" + letter + ".wav";
+        std::string cmd = "espeak-ng -v en -s 130 -a 200 -w " + path
+                          + " \"" + letter + "\" > /dev/null 2>&1";
+        system(cmd.c_str());
+    }
+    std::cout << "[INFO] Audio Engine ready." << std::endl;
     audioThread = std::thread(&VoiceSynthesizer::workerThread, this);
 }
 
@@ -40,14 +51,18 @@ void VoiceSynthesizer::workerThread() {
             hasNewText = false;
         }
 
-        // Synthesize voice using espeak-ng via the default ALSA audio device.
-        // system() blocks this worker thread for the duration of speech — that
-        // is intentional: TTS output has a natural duration and this dedicated
-        // thread is the only one that stalls.  The camera and inference threads
-        // continue unaffected, preserving end-to-end RT deadlines.
         std::cout << "[VOICE] Speaking: " << localText << std::endl;
-        std::string speakCmd = "espeak-ng -v en -s 140 -a 200 \"" + localText + "\" > /dev/null 2>&1";
-        int ret = system(speakCmd.c_str());
+        std::string wavPath = "/tmp/slt_" + localText + ".wav";
+        std::string cmd;
+        if (access(wavPath.c_str(), F_OK) == 0) {
+            // Pre-generated WAV exists — aplay starts in ~100ms vs espeak-ng ~2-3s.
+            // Route explicitly to the USB sound card (plughw:2,0) so aplay doesn't
+            // fall back to the HDMI output (card 0).
+            cmd = "aplay -q -D plughw:2,0 " + wavPath + " > /dev/null 2>&1";
+        } else {
+            cmd = "espeak-ng -v en -s 130 -a 200 \"" + localText + "\" > /dev/null 2>&1";
+        }
+        int ret = system(cmd.c_str());
         (void)ret;
     }
 }

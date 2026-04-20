@@ -80,6 +80,9 @@ target_link_libraries(TrainApp ${OpenCV_LIBS})
 # ==========================================
 # 4. GestureRecognizerUnitTests ù CI-compatible unit tests
 # ==========================================
+add_executable(AugmentDataset augment_dataset.cpp)
+target_link_libraries(AugmentDataset ${OpenCV_LIBS})
+
 add_executable(GestureRecognizerUnitTests
     GestureRecognizerUnitTests.cpp
     GestureRecognizer.cpp)

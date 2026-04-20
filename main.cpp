@@ -100,7 +100,7 @@ int main() {
 
     string lastSpokenText = "";
     int    framesConfirmed = 0;
-    const int CONFIRMATION_THRESHOLD = 10;
+    const int CONFIRMATION_THRESHOLD = 6;
 
     // ==========================================
     // 3. GUI WINDOWS
@@ -134,7 +134,7 @@ int main() {
         string text = recognizer.predict(local_roi, mask);
 
         // --- Anti-spam debounce: speak only after 10 stable frames ---
-        if (text != "No Hand" && text != "Error") {
+        if (text != "No Hand" && text != "Error" && text != "Uncertain") {
             if (text == lastSpokenText) {
                 framesConfirmed++;
                 if (framesConfirmed == CONFIRMATION_THRESHOLD)
@@ -150,9 +150,12 @@ int main() {
 
         // --- GUI ---
         Mat display_frame = local_roi.clone();
-        if (text != "No Hand" && text != "Error")
+        if (text != "No Hand" && text != "Error" && text != "Uncertain")
             putText(display_frame, "Detected: " + text,
                     Point(10, 40), FONT_HERSHEY_SIMPLEX, 1.2, Scalar(0, 255, 0), 3);
+        else if (text == "Uncertain")
+            putText(display_frame, "...",
+                    Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 165, 255), 2);
         else
             putText(display_frame, text,
                     Point(10, 40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
